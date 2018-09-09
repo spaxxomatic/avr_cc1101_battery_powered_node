@@ -1,0 +1,347 @@
+#include "EEPROM.h"
+#include "protocol.h"
+#include "wdt.h"
+#include "cc1101.h"
+#include <avr/sleep.h>
+#include <avr/wdt.h>
+
+// The ACTIVITY_LED is wired to the Arduino Output 4
+#define LEDOUTPUT 4
+
+//the MAINS_POWER_RELAY_PIN is connected to the relay that switches on the power source
+//by that reloading the battery
+//A1 is pin 15 
+#define GATE_MOTOR_POWER_ON_PIN 15 
+//A2 is pin 16
+#define MAINS_POWER_RELAY_PIN 16
+
+// The connection to the hardware chip CC1101 the RF Chip
+CC1101 cc1101;
+
+byte b;
+byte i;
+byte syncWord = 199;
+long counter=0;
+byte chan=0;
+
+boolean bEnterSleep = false;
+// a flag that a wireless packet has been received
+boolean packetAvailable = false;
+byte f_wdt = 0;
+/** ----------- ISR section --------- **/
+/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
+void cc1101signalsInterrupt(void){
+// set the flag that a package is available
+  sleep_disable();
+  detachInterrupt(0);
+  packetAvailable = true;
+}
+
+
+ISR(WDT_vect){
+    f_wdt+=1;
+}
+
+/** ----------- End ISR section --------- **/
+
+#define SYNCWORD1        0xB5    // Synchronization word, high byte
+#define SYNCWORD0        0x47    // Synchronization word, low byte
+
+void send_init_signal(){
+  send_data(0xFF);
+}
+
+#define BATT_FULL_LEVEL 4100 //we do not want to fully load the batt because the cc1101 is directly connected to the battery (with a 0,7 drop diode)
+#define BATT_RECHARGE_LEVEL 3500
+
+void enable_mains_power(boolean state){
+  Serial.print("B CHARGING ");
+  if (state) {
+    Serial.println("ON");
+    digitalWrite(MAINS_POWER_RELAY_PIN, HIGH);
+  }else{
+    Serial.println("OFF");
+    digitalWrite(MAINS_POWER_RELAY_PIN, LOW);
+  }
+}
+
+long checkBateryState() {
+  // Read 1.1V reference against AVcc
+  // set the reference to Vcc and the measurement to the internal 1.1V reference
+  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+    ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
+    ADMUX = _BV(MUX5) | _BV(MUX0);
+  #elif defined (__AVR_ATtiny25__) || defined(__AVR_ATtiny45__) || defined(__AVR_ATtiny85__)
+    ADMUX = _BV(MUX3) | _BV(MUX2);
+  #else
+    ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  #endif
+
+  delay(2); // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC); // Start conversion
+  while (bit_is_set(ADCSRA,ADSC)); // measuring
+
+  uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
+  uint8_t high = ADCH; // unlocks both
+
+  long result = (high<<8) | low;
+
+  result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
+  //return result; // Vcc in millivolts
+  if (result >= BATT_FULL_LEVEL) { //batt loaded
+    enable_mains_power(false);
+  }
+  if (result <= BATT_RECHARGE_LEVEL) { //batt shall be recharged
+    enable_mains_power(true);
+  }
+  return result;
+}
+
+void setup(){
+  Serial.begin(57600);
+  // setup the blinker output
+  pinMode(LEDOUTPUT, OUTPUT);
+  digitalWrite(LEDOUTPUT, LOW);
+  // blink once to signal the setup
+  flashLed(2);
+  //When first started after flashing, the 
+  
+  // initialize the RF Chip
+  cc1101.init();
+  if (cc1101.offset_freq0 == 0xFF && cc1101.offset_freq1 == 0xFF ){
+    Serial.print("Resetting freq regs to 0"); 
+    cc1101.adjustFreq(0x00, 0x00 ,true);
+  }  
+  cc1101.setSyncWord(SYNCWORD1, SYNCWORD0);
+  //cc1101.setSyncWord(&syncWord, true);
+  //cc1101.setDevAddress(0xFF, true);
+  cc1101.setDevAddress(0xFF, false);
+  cc1101.setCarrierFreq(CFREQ_433);
+  cc1101.disableAddressCheck(); //if not specified, will only display "packet received"
+  //cc1101.setTxPowerAmp(PA_LowPower);
+
+  Serial.print("CC1101_PARTNUM "); //cc1101=0
+  Serial.println(cc1101.readReg(CC1101_PARTNUM, CC1101_STATUS_REGISTER));
+  Serial.print("CC1101_VERSION "); //cc1101=4
+  Serial.println(cc1101.readReg(CC1101_VERSION, CC1101_STATUS_REGISTER));
+  Serial.print("CC1101_MARCSTATE ");
+  Serial.println(cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
+
+  attachInterrupt(0, cc1101signalsInterrupt, FALLING);
+  //attachInterrupt(0, cc1101signalsInterrupt, LOW);
+  Serial.println("CC1101 init ok");
+  send_init_signal();
+}
+
+byte ReadLQI(){
+  byte lqi=0;
+  byte value=0;
+  lqi=(cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER));
+  value = 0x3F - (lqi & 0x3F);
+  return value;
+}
+
+byte ReadRSSI(){
+  byte rssi=0;
+  byte value=0;
+
+  rssi=(cc1101.readReg(CC1101_RSSI, CC1101_STATUS_REGISTER));
+
+  if (rssi >= 128){
+    value = 255 - rssi;
+    value /= 2;
+    value += 74;
+  }else{
+    value = rssi/2;
+    value += 74;
+  }
+  return value;
+}
+
+bool bAdj = false;
+bool bPrintData = false;
+
+#define LED_PIN 4
+
+void flashLed( uint8_t no_of_flashes){
+for (int i = 0; i < no_of_flashes; i++){
+      digitalWrite(LED_PIN, HIGH);
+      delay(30);
+      digitalWrite(LED_PIN, LOW);
+      delay(20);
+}
+}
+
+void send_data(int payload) {
+    CCPACKET data;
+    data.length=10;
+    byte blinkCount=counter++;
+    data.data[0]=highByte(payload);
+    data.data[1]=lowByte(payload);
+    data.data[2]=blinkCount;
+    data.data[3]=1;
+    data.data[4]=0;
+    //cc1101.flushTxFifo ();
+    //Serial.print("MARCSTATE ");
+    //Serial.println(cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
+    if(cc1101.sendData(data)){
+      Serial.println("S:OK");
+    }else{
+      Serial.println("S:FAIL");
+    }
+}
+
+bool bReply=false;
+bool bPrintChannel=false;
+
+void serial_cmd() {
+  if (Serial.available() > 0) {
+   int rcv_char = Serial.read();
+   if (rcv_char == '+'){
+    cc1101.offset_freq1 ++;
+    bAdj = 1;
+   } else if (rcv_char == '-'){
+    cc1101.offset_freq1 --;
+    bAdj = 1;
+   } else if (rcv_char == '6'){
+    cc1101.offset_freq0 ++;
+    bAdj = 1;
+   } else if (rcv_char == '4'){
+    cc1101.offset_freq0 --;
+    bAdj = 1;
+   } else if (rcv_char == '8'){
+    cc1101.setChannel(cc1101.channel+1, true);
+    bPrintChannel = true;
+   } else if (rcv_char == '2'){
+    cc1101.setChannel(cc1101.channel-1, true);
+    bPrintChannel = true;
+   } else if (rcv_char == 's'){
+      send_data(0xFF);
+   }else if (rcv_char == 'i'){
+    //bEnableWor = !bEnableWor;
+   }else if (rcv_char == 'q'){
+    bEnterSleep = true;
+   }else if (rcv_char == 'w'){
+    bEnterSleep = false;
+   } else if (rcv_char == 'd'){
+    //dump regs
+    for (i=0; i <=CC1101_TEST0; i++){
+      Serial.println(cc1101.readReg(i, CC1101_CONFIG_REGISTER));
+      delay(4);
+      }
+   }else if (rcv_char == 'm'){
+    Serial.println(cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
+   }else if (rcv_char == 'p'){
+    bPrintData = !bPrintData ;
+   }else if (rcv_char == 'r'){
+      Serial.print ("RSSI ");
+      Serial.print (ReadRSSI());
+      Serial.print ("\tLQI ");
+      Serial.print (ReadLQI());
+      Serial.print (" \tpstat ");
+      Serial.println(cc1101.readReg(CC1101_PKTSTATUS, CC1101_STATUS_REGISTER), BIN);
+   }
+   ;
+  if (bPrintChannel){
+    bPrintChannel = false;
+    Serial.print ("Chan ");
+    Serial.println (cc1101.channel);
+  }
+  if (bAdj){
+    cc1101.adjustFreq(cc1101.offset_freq1, cc1101.offset_freq0 ,true);
+    bAdj = 0;
+    Serial.print(" M:");
+    Serial.print(cc1101.offset_freq1, HEX);
+    Serial.print(" m:");
+    Serial.println(cc1101.offset_freq0, HEX);
+   };
+  }
+
+}
+
+void dump_rssi(){
+    Serial.print ("RSSI ");
+    Serial.print (ReadRSSI());
+    Serial.print ("LQI ");
+    Serial.print (ReadLQI());
+
+  }
+
+
+void receive_handler(){
+  if(packetAvailable){
+    Serial.print("!");
+    // clear the flag
+    packetAvailable = false;
+    CCPACKET packet;
+    delay(2); //if not delayed here, there are CRC errors after coming back from sleep mode
+    if(cc1101.receiveData(&packet) > 0){
+      if(!packet.crc_ok) {
+        Serial.println("crc err");
+      }
+      flashLed(2);
+      if (bPrintData){
+        if(packet.length > 0){
+          //Serial.print("packet: len ");
+          //Serial.print(packet.length);
+          Serial.print("D: ");
+          for(int j=0; j<packet.length; j++){
+            Serial.print(packet.data[j],HEX);
+          }
+        }
+      }
+      //send ACK
+      //send_ack();
+      bReply = true;
+    }else{
+       Serial.println("No data");
+    }
+  }
+}
+
+void enter_deepsleep(){
+      //bring AVR to sleep. It will be woken up by the radio on packet receive
+
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    //WDTCSR = 1<<WDP0 | 1<<WDP3; // set new watchdog timeout prescaler to 8.0 seconds    
+    WDTCSR = WDPS_1S ;
+    WDTCSR |= _BV(WDIE); // Enable the WD interrupt (no reset)
+    //cc1101.setPowerDownState();
+    
+    sleep_enable();
+    attachInterrupt(0, cc1101signalsInterrupt, HIGH);
+    /* 0, 1, or many lines of code here */
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    cli();
+    sleep_bod_disable();
+    sei();
+    sleep_cpu();
+    // wake up here ->
+    sleep_disable();
+}
+
+#define WDT_CYCLES_CHECK_BAT 10
+
+void wdt_loop(){
+  if (f_wdt >= WDT_CYCLES_CHECK_BAT){ //Check batt state each WDT_CYCLES_CHECK_BAT seconds and return
+    f_wdt = 0;
+    checkBateryState();
+    //bEnterSleep = true;
+  }  
+}
+
+void loop(){
+  wdt_loop();
+  serial_cmd();
+  receive_handler();
+  
+  if (bReply){
+    delay(300);
+    send_data(0xAA);
+    bReply = false;
+  }
+  // Enable wireless reception interrupt
+  attachInterrupt(0, cc1101signalsInterrupt, FALLING);
+  if (bEnterSleep) enter_deepsleep();
+}
