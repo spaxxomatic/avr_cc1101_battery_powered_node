@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 panStamp <contact@panstamp.com>
+ * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
  * This file is part of the panStamp project.
  * 
@@ -24,7 +24,7 @@
 
 #include "repeater.h"
 #include "swpacket.h"
-#include "panstamp.h"
+#include "spaxstack.h"
 
 /**
  * init

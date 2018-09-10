@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 panStamp <contact@panstamp.com>
+ * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
  * This file is part of the panStamp project.
  * 
@@ -22,15 +22,21 @@
  * Creation date: 03/03/2011
  */
 
-#include "panstamp.h"
+#include "spaxstack.h"
 #include "commonregs.h"
 #include "calibration.h"
+#include "wdt.h"
 
-#define enableIRQ_GDO0()          attachInterrupt(0, isrGDO0event, FALLING);
+//#define enableIRQ_GDO0()          attachInterrupt(0, isrGDO0event, FALLING);
+#define enableIRQ_GDO0()          attachInterrupt(0, cc1101Interrupt, FALLING);
 #define disableIRQ_GDO0()         detachInterrupt(0);
 
 DEFINE_COMMON_REGINDEX_START()
 DEFINE_COMMON_REGINDEX_END()
+
+
+#define SYNCWORD1        0xB5    // Synchronization word, high byte
+#define SYNCWORD0        0x47    // Synchronization word, low byte
 
 /**
  * Array of registers
@@ -43,10 +49,16 @@ extern byte regTableSize;
  *
  * Class constructor
  */
-PANSTAMP::PANSTAMP(void)
+SPAXSTACK::SPAXSTACK(void)
 {
   statusReceived = NULL;
   repeater = NULL;
+  // a flag that a wireless packet has been received
+  packetAvailable = false;
+  bEnterSleep = false;
+  f_wdt = 0;
+  seqNo = 0;
+  bDebug = false;
 }
 
 /**
@@ -56,7 +68,7 @@ PANSTAMP::PANSTAMP(void)
  *
  * 'maxHop'  MAximum repeater count. Zero if omitted
  */
-void PANSTAMP::enableRepeater(byte maxHop)
+void SPAXSTACK::enableRepeater(byte maxHop)
 {
   if (repeater == NULL)
   {
@@ -83,6 +95,88 @@ REGISTER * getRegister(byte regId)
 
   return regTable[regId]; 
 }
+
+/** ----------- ISR section --------- **/
+/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
+void cc1101Interrupt(void){
+// set the flag that a package is available
+  sleep_disable();
+  detachInterrupt(0);
+  panstamp.packetAvailable = true;
+}
+
+void enter_deepsleep(){
+      //bring AVR to sleep. It will be woken up by the radio on packet receive
+
+    WDTCSR |= (1<<WDCE) | (1<<WDE);
+    //WDTCSR = 1<<WDP0 | 1<<WDP3; // set new watchdog timeout prescaler to 8.0 seconds    
+    WDTCSR = WDPS_1S ;
+    WDTCSR |= _BV(WDIE); // Enable the WD interrupt (no reset)
+    //cc1101.setPowerDownState();
+    
+    sleep_enable();
+    attachInterrupt(0, cc1101Interrupt, HIGH);
+    /* 0, 1, or many lines of code here */
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    cli();
+    sleep_bod_disable();
+    sei();
+    sleep_cpu();
+    // wake up here ->
+    sleep_disable();
+}
+
+void SPAXSTACK::enterSleep(){
+  enableIRQ_GDO0();
+  if (bEnterSleep) enter_deepsleep();
+}
+
+void SPAXSTACK::sendAck(void){
+    delay(300);
+    CCPACKET data;
+    data.length=10;    
+    data.data[0]=highByte(ACK_HIGHBYTE);
+    data.data[1]=lowByte(ACK_LOWBYTE);
+    data.data[2]=seqNo;
+    data.data[3]=0;
+    data.data[4]=0;
+    if(cc1101.sendData(data)){
+      Serial.println("S:OK");
+    }else{
+      Serial.println("S:FAIL");
+    };  
+};
+
+void SPAXSTACK::receive_loop(){
+  if(packetAvailable){
+    Serial.print("!");
+    // clear the flag
+    packetAvailable = false;
+    CCPACKET packet;
+    delay(2); //if not delayed here, there are CRC errors after coming back from sleep mode
+    if(cc1101.receiveData(&packet) > 0){
+      if(!packet.crc_ok) {
+        Serial.println("crc err");
+      }
+      //flashLed(2);
+      if (bDebug){
+        if(packet.length > 0){
+          //Serial.print("packet: len ");
+          //Serial.print(packet.length);
+          Serial.print("D: ");
+          for(int j=0; j<packet.length; j++){
+            Serial.print(packet.data[j],HEX);
+          }
+        }
+      }
+      //send ACK
+      sendAck();
+    }else{
+       Serial.println("No data");
+    }
+  }
+}
+
 
 /**
  * isrGDO0event
@@ -193,8 +287,9 @@ void isrGDO0event(void)
  *
  * Watchdog ISR. Called whenever a watchdog interrupt occurs
  */
-ISR(WDT_vect)
-{
+
+ISR(WDT_vect){
+    panstamp.f_wdt +=1;
 }
 
 /**
@@ -202,7 +297,7 @@ ISR(WDT_vect)
  * 
  * 'time'	Watchdog timer value
  */
-void PANSTAMP::setup_watchdog(byte time) 
+void SPAXSTACK::setup_watchdog(byte time) 
 {
   byte bb;
 
@@ -238,7 +333,7 @@ ISR(TIMER2_OVF_vect)
  *          RTC_2S = 256 for 2 sec
  *          RTC_8S = 1024 for 8 sec
  */
-void PANSTAMP::setup_rtc(byte time)
+void SPAXSTACK::setup_rtc(byte time)
 {
   // Set timer 2 to asyncronous mode (32.768KHz crystal)
   ASSR = (1 << AS2);
@@ -258,13 +353,21 @@ void PANSTAMP::setup_rtc(byte time)
  * 
  * Initialize panStamp board
  */
-void PANSTAMP::init() 
+void SPAXSTACK::init() 
 {
   // Calibrate internal RC oscillator
   rtcCrystal = rcOscCalibrate();
 
   // Setup CC1101
   cc1101.init();
+  if (cc1101.offset_freq0 == 0xFF && cc1101.offset_freq1 == 0xFF ){ //first start after flashing, the EEPROM is not set yet
+    Serial.print("Resetting freq regs to 0"); 
+    cc1101.adjustFreq(0x00, 0x00 ,true);
+  }  
+  cc1101.setSyncWord(SYNCWORD1, SYNCWORD0);
+  cc1101.setDevAddress(0xFF, false);
+  cc1101.setCarrierFreq(CFREQ_433);
+  cc1101.disableAddressCheck(); //if not specified, will only display "packet received"
 
   // Security disabled by default
   security = 0;
@@ -291,7 +394,7 @@ void PANSTAMP::init()
  * 
  * Reset panStamp
  */
-void PANSTAMP::reset() 
+void SPAXSTACK::reset() 
 {
   // Tell the network that our panStamp is restarting
   systemState = SYSTATE_RESTART;
@@ -322,7 +425,7 @@ void PANSTAMP::reset()
  *  WDTO_4S = 4 s
  *  WDTO_8S = 8 s
  */
-void PANSTAMP::sleepWd(byte time) 
+void SPAXSTACK::sleepWd(byte time) 
 {
   // Power-down CC1101
   cc1101.setPowerDownState();
@@ -360,7 +463,7 @@ void PANSTAMP::sleepWd(byte time)
  *  RTC_2S = 2 s
  *  RTC_8S = 8 s
  */
-void PANSTAMP::sleepRtc(byte time) 
+void SPAXSTACK::sleepRtc(byte time) 
 {
   // Power-down CC1101
   cc1101.setPowerDownState();
@@ -389,7 +492,7 @@ void PANSTAMP::sleepRtc(byte time)
  *
  * 'rxOn' Enter RX_ON state after waking up
  */
-void PANSTAMP::wakeUp(bool rxOn) 
+void SPAXSTACK::wakeUp(bool rxOn) 
 {
   // Exit from sleep
   sleep_disable();
@@ -419,7 +522,7 @@ void PANSTAMP::wakeUp(bool rxOn)
  *
  * Sleep whilst in power-down mode. This function currently uses sleepWd in a loop
  */
-void PANSTAMP::goToSleep(void)
+void SPAXSTACK::goToSleep(void)
 {
   // Get the amount of seconds to sleep from the internal register
   int intInterval = txInterval[0] * 0x100 + txInterval[1];
@@ -495,7 +598,7 @@ void PANSTAMP::goToSleep(void)
  *
  * 'state'  New system state
  */
-void PANSTAMP::enterSystemState(SYSTATE state)
+void SPAXSTACK::enterSystemState(SYSTATE state)
 {
   // Enter SYNC mode (full Rx mode)
   byte newState[] = {state};
@@ -511,7 +614,7 @@ void PANSTAMP::enterSystemState(SYSTATE state)
  * Return:
  * 	Temperature in degrees Celsius
  */
-long PANSTAMP::getInternalTemp(void) 
+long SPAXSTACK::getInternalTemp(void) 
 {
   unsigned int wADC;
   long t;
@@ -550,7 +653,7 @@ long PANSTAMP::getInternalTemp(void)
  * 'interval'	New periodic interval. 0 for asynchronous devices
  * 'save'     If TRUE, save parameter in EEPROM
  */
-void PANSTAMP::setTxInterval(byte* interval, bool save)
+void SPAXSTACK::setTxInterval(byte* interval, bool save)
 {
   memcpy(txInterval, interval, sizeof(txInterval));
 
@@ -569,7 +672,7 @@ void PANSTAMP::setTxInterval(byte* interval, bool save)
  * 
  * 'password'	Encryption password
  */
-void PANSTAMP::setSmartPassword(byte* password)
+void SPAXSTACK::setSmartPassword(byte* password)
 {
   // Save password
   memcpy(encryptPwd, password, sizeof(encryptPwd));
@@ -578,7 +681,7 @@ void PANSTAMP::setSmartPassword(byte* password)
 }
 
 /**
- * Pre-instantiate PANSTAMP object
+ * Pre-instantiate SPAXSTACK object
  */
-PANSTAMP panstamp;
+SPAXSTACK panstamp;
 

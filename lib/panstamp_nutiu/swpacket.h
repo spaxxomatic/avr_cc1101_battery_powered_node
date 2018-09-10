@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 panStamp <contact@panstamp.com>
+ * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
  * This file is part of the panStamp project.
  * 
@@ -37,6 +37,8 @@
 #define SWAP_NB_TX_TRIES       3                                      // Number of transmission retries
 #define SWAP_TX_DELAY          panstamp.cc1101.devAddress * 2         // Delay before sending
 
+#define ACK_HIGHBYTE 0xF0
+#define ACK_LOWBYTE 0xF0
 /**
  * SWAP message functions
  */

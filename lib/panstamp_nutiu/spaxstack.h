@@ -1,7 +1,8 @@
 /**
- * Copyright (c) 2011 panStamp <contact@panstamp.com>
+ * Copyright (c) 2011 autonity <contact@autonity.de>
  * 
- * This file is part of the panStamp project.
+ * This file is derived from the panStamp project. 
+ * Credits to Daniel Berenguer
  * 
  * panStamp  is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -18,12 +19,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
- * Author: Daniel Berenguer
- * Creation date: 03/03/2011
+ * Author: Lucian Nutiu
+ * Creation date: 03/09/2018
  */
 
-#ifndef _PANSTAMP_H
-#define _PANSTAMP_H
+#ifndef _SPAXSTACK_H
+#define _SPAXSTACK_H
 
 #include "Arduino.h"
 #include "EEPROM.h"
@@ -77,14 +78,14 @@ enum SYSTATE
   SYSTATE_LOWBAT
 };
 
-
+void enter_deepsleep();
 /**
- * Class: PANSTAMP
+ * Class: SPAXSTACK
  * 
  * Description:
- * panStamp main class
+ * SPAXSTACK main class
  */
-class PANSTAMP
+class SPAXSTACK
 {
   private:
     /**
@@ -106,6 +107,7 @@ class PANSTAMP
      *          RTC_8S = 1024 for 8 sec
      */
     void setup_rtc(byte time);
+    // a flag that a wireless packet has been received
 
   public:
     /**
@@ -113,6 +115,14 @@ class PANSTAMP
      *
      * Pointer to repeater object
      */
+    boolean packetAvailable ; //flags reception available, will by set by the ISR
+    byte seqNo ; //sequence number of the received packet
+    boolean bEnterSleep;
+    boolean bDebug;
+    void receive_loop();
+    //counter for watchdog timer
+    byte f_wdt ;
+
     REPEATER *repeater;
 
     /**
@@ -150,6 +160,7 @@ class PANSTAMP
      */
     byte encryptPwd[12];
 
+    void enterSleep(void);
     /**
      * enableRepeater
      *
@@ -176,7 +187,7 @@ class PANSTAMP
      *
      * Class constructor
      */
-    PANSTAMP(void);
+    SPAXSTACK(void);
 
     /**
      * init
@@ -284,12 +295,20 @@ class PANSTAMP
      * 'password'	Encryption password
      */
     void setSmartPassword(byte* password);
+     
+     /**
+     * sendAck
+     * 
+     * sends and aknowledgement packet
+     * 
+     */
+    void sendAck(void);
 };
 
 /**
- * Global PANSTAMP object
+ * Global SPAXSTACK object
  */
-extern PANSTAMP panstamp;
+extern SPAXSTACK panstamp;
 
 /**
  * getRegister

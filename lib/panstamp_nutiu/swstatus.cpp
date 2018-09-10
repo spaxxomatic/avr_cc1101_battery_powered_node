@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2011 panStamp <contact@panstamp.com>
+ * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
  * This file is part of the panStamp project.
  * 
@@ -23,7 +23,7 @@
  */
 
 #include "swstatus.h"
-#include "panstamp.h"
+#include "spaxstack.h"
 
 /**
  * SWSTATUS
