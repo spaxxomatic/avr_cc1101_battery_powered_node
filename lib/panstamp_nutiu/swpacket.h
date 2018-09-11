@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
- * This file is part of the panStamp project.
+ * This file is part of the spaxxity project.
  * 
  * panStamp  is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
- * Author: Daniel Berenguer
+ * Author: Daniel Berenguer, Lucian Nutiu 
  * Creation date: 03/03/2011
  */
 
@@ -50,11 +50,6 @@ enum SWAPFUNCT
 };
 
 /**
- * Macros
- */
-#define smartDecrypt()         smartEncrypt(true)
-
-/**
  * Structure: SWDATA
  * 
  * Description:
@@ -75,16 +70,6 @@ struct SWDATA
 
 class SWPACKET : public CCPACKET
 {
-  private:
-    /**
-     * smartEncrypt
-     * 
-     * Apply Smart Encryption to the SWAP packet passed as argument
-     *
-     * 'decrypt': if true, Decrypt packet. Encrypt otherwise
-     */
-    void smartEncrypt(bool decrypt=false);
-
   public:
     /**
      * Destination address

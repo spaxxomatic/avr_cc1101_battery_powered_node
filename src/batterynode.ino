@@ -16,16 +16,9 @@
 //A2 is pin 16
 #define MAINS_POWER_RELAY_PIN 16
 
-// The connection to the hardware chip CC1101 the RF Chip
-//CC1101 cc1101;
-
 byte b;
 byte i;
-byte syncWord = 199;
 long counter=0;
-byte chan=0;
-
-/** ----------- End ISR section --------- **/
 
 void send_init_signal(){
   send_data(0xFF);

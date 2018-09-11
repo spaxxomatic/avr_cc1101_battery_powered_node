@@ -72,11 +72,14 @@
 enum SYSTATE
 {
   SYSTATE_RESTART = 0,
+  SYSTATE_WAIT_CONFIG,
   SYSTATE_RXON,
   SYSTATE_RXOFF,
   SYSTATE_SYNC,
   SYSTATE_LOWBAT
 };
+
+
 
 void enter_deepsleep();
 /**
@@ -115,13 +118,16 @@ class SPAXSTACK
      *
      * Pointer to repeater object
      */
-    boolean packetAvailable ; //flags reception available, will by set by the ISR
+    
     byte seqNo ; //sequence number of the received packet
     boolean bEnterSleep;
     boolean bDebug;
+    
     void receive_loop();
     //counter for watchdog timer
-    byte f_wdt ;
+    volatile byte f_wdt ;
+    //flags reception available, will by set by the ISR
+    volatile boolean packetAvailable ; 
 
     REPEATER *repeater;
 
@@ -255,7 +261,17 @@ class SPAXSTACK
      * Sleep whilst in power-down mode. This function currently uses sleepWd in a loop
      *
      */
-    void goToSleep(void);
+    void enterSleepWithRadioOff(void);
+
+
+    /**
+     * getAddress
+     * 
+     * Sends a broadcast request for a device address. When addr is received, sets it and enables cc1101 packet filtering
+     * 
+     */
+    void getAddress(void);
+
 
     /**
      * enterSystemState
@@ -303,6 +319,15 @@ class SPAXSTACK
      * 
      */
     void sendAck(void);
+
+    /**
+     * getCapabilities
+     * 
+     * Sends the module capabilities 
+     *  
+     * 
+     */
+    void getCapabilities(void);
 };
 
 /**

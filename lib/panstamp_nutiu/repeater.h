@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
- * This file is part of the panStamp project.
+ * This file is part of the spaxxity project.
  * 
  * panStamp  is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
- * Author: Daniel Berenguer
+ * Author: Daniel Berenguer, Lucian Nutiu 
  * Creation date: 10/01/2012
  */
 

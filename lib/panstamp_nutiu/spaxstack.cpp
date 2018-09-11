@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2011 panStamp <contact@autonity.de>
  * 
- * This file is part of the panStamp project.
+ * This file is part of the spaxxity project.
  * 
  * panStamp  is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -18,14 +18,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
- * Author: Daniel Berenguer
+ * Author: Daniel Berenguer, Lucian Nutiu 
  * Creation date: 03/03/2011
  */
 
 #include "spaxstack.h"
 #include "commonregs.h"
+#include "commonregs.h"
 #include "calibration.h"
 #include "wdt.h"
+#include "protocol.h"
 
 //#define enableIRQ_GDO0()          attachInterrupt(0, isrGDO0event, FALLING);
 #define enableIRQ_GDO0()          attachInterrupt(0, cc1101Interrupt, FALLING);
@@ -92,7 +94,6 @@ REGISTER * getRegister(byte regId)
 {
   if (regId >= regTableSize)
     return NULL;
-
   return regTable[regId]; 
 }
 
@@ -204,14 +205,6 @@ void isrGDO0event(void)
         // Repeater enabled?
         if (panstamp.repeater != NULL)
           panstamp.repeater->packetHandler(&swPacket);
-
-        // Smart encryption locally enabled?
-        if (panstamp.security & 0x02)
-        {
-          // OK, then incoming packets must be encrypted too
-          if (!(swPacket.security & 0x02))
-            eval = false;
-        }
 
         if (eval)
         {
@@ -522,7 +515,7 @@ void SPAXSTACK::wakeUp(bool rxOn)
  *
  * Sleep whilst in power-down mode. This function currently uses sleepWd in a loop
  */
-void SPAXSTACK::goToSleep(void)
+void SPAXSTACK::enterSleepWithRadioOff(void)
 {
   // Get the amount of seconds to sleep from the internal register
   int intInterval = txInterval[0] * 0x100 + txInterval[1];
@@ -684,4 +677,31 @@ void SPAXSTACK::setSmartPassword(byte* password)
  * Pre-instantiate SPAXSTACK object
  */
 SPAXSTACK panstamp;
+
+
+/**
+ * getAddress
+ * 
+ * Sends a broadcast request for a device address. When addr is received, sets it and enables cc1101 packet filtering
+ * 
+ * 'password'	Encryption password
+ */
+void SPAXSTACK::getAddress(void)
+{
+  // Broadcast addr request
+  
+  byte retry = 0;
+  
+  while (retry++ > MAX_RETRY_SEND_DATA){
+    enterSystemState(SYSSTATE_WAIT_CONFIG);
+    SWSTATUS packet = SWSTATUS(id, value, length);
+    packet.send();
+    if (waitSetAddrResponse()) break;
+  }
+  //we are configured, going into receive mode
+  cc1101.enableAddressCheck();
+  enterSystemState(SYSSTATE_WAIT_CONFIG);
+}
+
+}
 
