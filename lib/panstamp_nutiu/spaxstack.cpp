@@ -106,7 +106,7 @@ void cc1101Interrupt(void){
   panstamp.packetAvailable = true;
 }
 
-void enter_deepsleep(){
+void enterDeepSleepWithRx(){
       //bring AVR to sleep. It will be woken up by the radio on packet receive
 
     WDTCSR |= (1<<WDCE) | (1<<WDE);
@@ -129,7 +129,7 @@ void enter_deepsleep(){
 
 void SPAXSTACK::enterSleep(){
   enableIRQ_GDO0();
-  if (bEnterSleep) enter_deepsleep();
+  if (bEnterSleep) enterDeepSleepWithRx();
 }
 
 void SPAXSTACK::sendAck(void){
@@ -222,18 +222,6 @@ void isrGDO0event(void)
               // Valid register?
               if ((reg = getRegister(swPacket.regId)) == NULL)
                 break;
-              // Anti-playback security enabled?
-              if (panstamp.security & 0x01)
-              {
-                // Check received nonce
-                if (panstamp.nonce != swPacket.nonce)
-                {
-                  // Nonce missmatch. Transmit correct nonce.
-                  reg = getRegister(REGI_SECUNONCE);
-                  reg->sendSwapStatus();
-                  break;
-                }
-              }
               // Filter incorrect data lengths
               if (swPacket.value.length == reg->length)
                 reg->setData(swPacket.value.data);
@@ -362,9 +350,6 @@ void SPAXSTACK::init()
   cc1101.setCarrierFreq(CFREQ_433);
   cc1101.disableAddressCheck(); //if not specified, will only display "packet received"
 
-  // Security disabled by default
-  security = 0;
-
   // Read periodic Tx interval from EEPROM
   txInterval[0] = EEPROM.read(EEPROM_TX_INTERVAL);
   txInterval[1] = EEPROM.read(EEPROM_TX_INTERVAL + 1);
@@ -378,8 +363,8 @@ void SPAXSTACK::init()
   enableIRQ_GDO0();
 
   // Default values
-  nonce = 0;
-  systemState = SYSTATE_RXON;
+  packetNo = 0;
+  stackState = SYSTATE_RXON;
 }
 
 /**
@@ -390,7 +375,7 @@ void SPAXSTACK::init()
 void SPAXSTACK::reset() 
 {
   // Tell the network that our panStamp is restarting
-  systemState = SYSTATE_RESTART;
+  stackState = SYSTATE_RESTART;
   getRegister(REGI_SYSSTATE)->sendSwapStatus();
 
   // Reset panStamp
@@ -507,7 +492,7 @@ void SPAXSTACK::wakeUp(bool rxOn)
   cc1101.wakeUp();
 
   if (rxOn)
-    systemState = SYSTATE_RXON;
+    stackState = SYSTATE_RXON;
 }
 
 /**
@@ -567,13 +552,13 @@ void SPAXSTACK::enterSleepWithRadioOff(void)
       minTime = WDTO_1S;
   }
 
-  systemState = SYSTATE_RXOFF;
+  stackState = SYSTATE_RXOFF;
 
   // Sleep
   for (i=0 ; i<loops ; i++)
   {
     // Exit sleeping loop?
-    if (systemState == SYSTATE_RXON)
+    if (stackState == SYSTATE_RXON)
       break;
 
     if (rtcCrystal)
@@ -581,17 +566,17 @@ void SPAXSTACK::enterSleepWithRadioOff(void)
     else
       sleepWd(minTime);
   }
-  systemState = SYSTATE_RXON;
+  stackState = SYSTATE_RXON;
 }
 
 /**
- * enterSystemState
+ * sendAndStoreSystemState
  *
- * Enter system state
+ * Stores the system state in the registry and broadcasts it
  *
  * 'state'  New system state
  */
-void SPAXSTACK::enterSystemState(SYSTATE state)
+void SPAXSTACK::sendAndStoreSystemState(SYSTATE state)
 {
   // Enter SYNC mode (full Rx mode)
   byte newState[] = {state};
@@ -659,21 +644,6 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
 }
 
 /**
- * setSmartPassword
- * 
- * Set Smart Encryption password
- * 
- * 'password'	Encryption password
- */
-void SPAXSTACK::setSmartPassword(byte* password)
-{
-  // Save password
-  memcpy(encryptPwd, password, sizeof(encryptPwd));
-  // Enable Smart Encryption
-  security |= 0x02;
-}
-
-/**
  * Pre-instantiate SPAXSTACK object
  */
 SPAXSTACK panstamp;
@@ -689,19 +659,19 @@ SPAXSTACK panstamp;
 void SPAXSTACK::getAddress(void)
 {
   // Broadcast addr request
-  
   byte retry = 0;
-  
   while (retry++ > MAX_RETRY_SEND_DATA){
-    enterSystemState(SYSSTATE_WAIT_CONFIG);
+    stackState = STACKSTATE_WAIT_CONFIG;
     SWSTATUS packet = SWSTATUS(id, value, length);
     packet.send();
-    if (waitSetAddrResponse()) break;
+    //Wait for a response. When the status is set to SYSTATE_READY, all went fine
+    if (stackState == STACKSTATE_READY) {
+      break;
+    }
   }
   //we are configured, going into receive mode
   cc1101.enableAddressCheck();
-  enterSystemState(SYSSTATE_WAIT_CONFIG);
-}
-
+  sendAck();
+  }
 }
 

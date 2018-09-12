@@ -64,8 +64,6 @@
 #define setHighTxPower()    cc1101.setTxPowerAmp(PA_LongDistance)
 #define setLowTxPower()     cc1101.setTxPowerAmp(PA_LowPower)
 
-#define enableAntiPlayback()    security |= 0x01
-
 /**
  * System states
  */
@@ -73,15 +71,20 @@ enum SYSTATE
 {
   SYSTATE_RESTART = 0,
   SYSTATE_WAIT_CONFIG,
+  SYSTATE_READY,
   SYSTATE_RXON,
   SYSTATE_RXOFF,
   SYSTATE_SYNC,
   SYSTATE_LOWBAT
 };
 
+enum STACKSTATE
+{
+  STACKSTATE_WAIT_CONFIG = 0,
+  STACKSTATE_READY
+};
 
-
-void enter_deepsleep();
+void enterDeepSleepWithRx();
 /**
  * Class: SPAXSTACK
  * 
@@ -140,31 +143,21 @@ class SPAXSTACK
      * CC1101 radio interface
      */
     CC1101 cc1101;
-    
-    /**
-     * Security options
-     */
-    byte security;
 
     /**
-     * Security cyclic nonce
+     * Packet number
      */
-    byte nonce;
+    byte packetNo;
     
     /**
      * System state
      */
-    byte systemState;
+    byte stackState;
 
     /**
      * Interval between periodic transmissions. 0 for asynchronous transmissions
      */
     byte txInterval[2];
-
-    /**
-     * Smart encryption password
-     */
-    byte encryptPwd[12];
 
     void enterSleep(void);
     /**
@@ -189,7 +182,7 @@ class SPAXSTACK
     void (*statusReceived)(SWPACKET *status);
 
     /**
-     * PANSTAMP
+     * SPAXSTACK
      *
      * Class constructor
      */
@@ -274,13 +267,13 @@ class SPAXSTACK
 
 
     /**
-     * enterSystemState
+     * sendAndStoreSystemState
      *
-     * Enter system state
+     * Stores the system state in the registry and broadcasts it
      *
      * 'state'  New system state
      */
-    void enterSystemState(SYSTATE state);
+    void sendAndStoreSystemState(SYSTATE state);
 
     /**
      * getInternalTemp

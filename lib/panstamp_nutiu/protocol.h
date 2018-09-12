@@ -6,4 +6,3 @@
 #define CMD_SET_RADIO_ADDRESS 0xDD
 #define CMD_SET_ACTOR 0x01
 #define CMD_READ_INPUT 0x02
-#define CMD_READ_INPUT 0x02

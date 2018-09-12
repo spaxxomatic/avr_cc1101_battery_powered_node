@@ -87,14 +87,9 @@ class SWPACKET : public CCPACKET
     byte hop;
 
     /**
-     * Security option byte
+     * Packet number 
      */
-    byte security;
-
-    /**
-     * Security cyclic nonce
-     */
-    byte nonce;
+    byte packetNo;
 
     /**
      * Function byte

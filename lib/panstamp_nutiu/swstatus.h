@@ -41,6 +41,6 @@ class SWSTATUS : public SWPACKET
      * '*val'	New value
      * 'len'	Buffer length
      */
-    SWSTATUS(byte rId, byte *val, byte len);
+    SWSTATUS(byte registerId, byte *val, byte len);
 };
 #endif

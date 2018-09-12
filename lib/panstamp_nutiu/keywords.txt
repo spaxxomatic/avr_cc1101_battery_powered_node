@@ -19,12 +19,11 @@ init	KEYWORD2
 reset KEYWORD2
 wakeUp KEYWORD2
 goToSleep KEYWORD2
-enterSystemState KEYWORD2
+sendAndStoreSystemState KEYWORD2
 setSyncWord KEYWORD2
 setDevAddress KEYWORD2
 setCarrierFreq KEYWORD2
 setChannel KEYWORD2
-setSecurity KEYWORD2
 setTxInterval KEYWORD2
 setSwapStatusCallBack KEYWORD2
 setRxState KEYWORD2

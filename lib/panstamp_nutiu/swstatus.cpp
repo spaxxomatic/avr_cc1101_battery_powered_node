@@ -34,16 +34,15 @@
  * '*val'	New value
  * 'len'	Buffer length
  */
-SWSTATUS::SWSTATUS(byte rId, byte *val, byte len) 
+SWSTATUS::SWSTATUS(byte registerId, byte *val, byte len) 
 {
   destAddr = SWAP_BCAST_ADDR;
   srcAddr = panstamp.cc1101.devAddress;
   hop = 0;
-  security = panstamp.security & 0x0F;
-  nonce = ++panstamp.nonce;
+  packetNo = panstamp.packetNo;
   function = SWAPFUNCT_STA;
   regAddr = panstamp.cc1101.devAddress;
-  regId = rId;
+  regId = registerId;
   value.length = len;
   value.data = val;
 }

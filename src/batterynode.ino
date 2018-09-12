@@ -94,7 +94,6 @@ void setup(){
 
   //attachInterrupt(0, cc1101signalsInterrupt, FALLING);
   //attachInterrupt(0, cc1101signalsInterrupt, LOW);
-  Serial.println("CC1101 init ok");
   send_init_signal();
 }
 

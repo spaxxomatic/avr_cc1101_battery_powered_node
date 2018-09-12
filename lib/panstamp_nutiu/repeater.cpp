@@ -77,8 +77,8 @@ void REPEATER::packetHandler(SWPACKET *packet)
             // Same SWAP function?
             if (transactions[i].function == packet->function)
             {
-              // Same cyclic nonce?
-              if (transactions[i].nonce == packet->nonce)
+              // Same packetNo?
+              if (transactions[i].packetNo == packet->packetNo)
               {
                 currentTime = millis();
                 // Time stamp not expired?
@@ -122,7 +122,7 @@ void REPEATER::saveTransaction(SWPACKET *packet)
   transactions[0].timeStamp = millis();         // Current time stamp
   transactions[0].function = packet->function;  // SWAP function
   transactions[0].srcAddr = packet->srcAddr;    // Source address
-  transactions[0].nonce = packet->nonce;        // Cyclic nonce
+  transactions[0].packetNo = packet->packetNo;       
   transactions[0].regAddr = packet->regAddr;    // Register address
 }
 

@@ -39,8 +39,7 @@ SWQUERY::SWQUERY(byte dAddr, byte rAddr, byte rId)
   destAddr = dAddr;
   srcAddr = panstamp.cc1101.devAddress;
   hop = 0;
-  security = panstamp.security & 0x0F;
-  nonce = 0;
+  packetNo = panstamp.packetNo;
   function = SWAPFUNCT_QRY;
   regAddr = rAddr;
   regId = rId;

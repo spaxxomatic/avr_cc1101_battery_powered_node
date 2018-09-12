@@ -36,9 +36,6 @@ enum CUSTOM_REGINDEX                    \
   REGI_FWVERSION,                       \
   REGI_SYSSTATE,                        \
   REGI_FREQCHANNEL,                     \
-  REGI_SECUOPTION,                      \
-  REGI_PASSWORD,                        \
-  REGI_SECUNONCE,                       \
   REGI_NETWORKID,                       \
   REGI_DEVADDRESS,                      \
   REGI_TXINTERVAL,
@@ -66,13 +63,6 @@ REGISTER regFwVersion(dtFwVersion, sizeof(dtFwVersion), NULL, NULL);            
 REGISTER regSysState(&panstamp.systemState, sizeof(panstamp.systemState), NULL, &setSysState);                               \
 /* Frequency channel */                                                                                                      \
 REGISTER regFreqChannel(&panstamp.cc1101.channel, sizeof(panstamp.cc1101.channel), NULL, &setFreqChannel);                   \
-/* Security option */                                                                                                        \
-REGISTER regSecuOption(&panstamp.security, sizeof(panstamp.security), NULL, NULL);                                           \
-/* Security password (not implemented yet) */                                                                                \
-static byte dtPassword[1];                                                                                                   \
-REGISTER regPassword(dtPassword, sizeof(dtPassword), NULL, NULL);                                          \
-/* Security nonce */                                                                                                         \
-REGISTER regSecuNonce(&panstamp.nonce, sizeof(panstamp.nonce), NULL, NULL);                                                  \
 /* Network Id */                                                                                                             \
 REGISTER regNetworkId(panstamp.cc1101.syncWord, sizeof(panstamp.cc1101.syncWord), NULL, &setNetworkId);                      \
 /* Device address */                                                                                                         \
@@ -90,11 +80,9 @@ REGISTER *regTable[] = {             \
         &regFwVersion,               \
         &regSysState,                \
         &regFreqChannel,             \
-        &regSecuOption,              \
-        &regPassword,                \
-        &regSecuNonce,               \
         &regNetworkId,               \
         &regDevAddress,              \
+        &regCapabilities,             \
         &regTxInterval,
 
 #define DECLARE_REGISTERS_END()      \
@@ -153,7 +141,7 @@ const void setFreqChannel(byte id, byte *channel)           \
     /* Send status message before entering the new          \
     frequency channel */                                    \
     SWSTATUS packet = SWSTATUS(regFreqChannel.id, channel, regFreqChannel.length); \
-    packet.send();                                          \
+    packet.send();                                     \
     /* Update register value */                             \
     panstamp.cc1101.setChannel(channel[0], true);           \
     /* Restart device */                                    \

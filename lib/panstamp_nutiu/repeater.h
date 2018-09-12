@@ -43,7 +43,7 @@ typedef struct
   unsigned long timeStamp;  // Transmission time stamp (ms)
   byte function;            // SWAP function
   byte srcAddr;             // Source address
-  byte nonce;               // Cyclic nonce
+  byte packetNo;               // Packet no
   byte regAddr;             // Register address
 } Transaction;
 
