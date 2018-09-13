@@ -1,20 +1,20 @@
 /**
- * Copyright (c) 2011 panStamp <contact@autonity.de>
+ * Copyright (c) 2018 autonity <contact@autonity.de>
  * 
  * This file is part of the spaxxity project.
  * 
- * panStamp  is free software; you can redistribute it and/or modify
+ * spaxxity is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or
  * any later version.
  * 
- * panStamp is distributed in the hope that it will be useful,
+ * spaxxity is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  * 
  * You should have received a copy of the GNU Lesser General Public License
- * along with panStamp; if not, write to the Free Software
+ * along with spaxxity; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
@@ -60,15 +60,15 @@ REGISTER regHwVersion(dtHwVersion, sizeof(dtHwVersion), NULL, NULL);            
 static byte dtFwVersion[4] = {FIRMWARE_VERSION >> 24, FIRMWARE_VERSION >> 16 , FIRMWARE_VERSION >> 8, FIRMWARE_VERSION};     \
 REGISTER regFwVersion(dtFwVersion, sizeof(dtFwVersion), NULL, NULL);                                                         \
 /* System state */                                                                                                           \
-REGISTER regSysState(&panstamp.systemState, sizeof(panstamp.systemState), NULL, &setSysState);                               \
+REGISTER regSysState(&commstack.systemState, sizeof(commstack.systemState), NULL, &setSysState);                               \
 /* Frequency channel */                                                                                                      \
-REGISTER regFreqChannel(&panstamp.cc1101.channel, sizeof(panstamp.cc1101.channel), NULL, &setFreqChannel);                   \
+REGISTER regFreqChannel(&commstack.cc1101.channel, sizeof(commstack.cc1101.channel), NULL, &setFreqChannel);                   \
 /* Network Id */                                                                                                             \
-REGISTER regNetworkId(panstamp.cc1101.syncWord, sizeof(panstamp.cc1101.syncWord), NULL, &setNetworkId);                      \
+REGISTER regNetworkId(commstack.cc1101.syncWord, sizeof(commstack.cc1101.syncWord), NULL, &setNetworkId);                      \
 /* Device address */                                                                                                         \
-REGISTER regDevAddress(&panstamp.cc1101.devAddress, sizeof(panstamp.cc1101.devAddress), NULL, &setDevAddress);               \
+REGISTER regDevAddress(&commstack.cc1101.devAddress, sizeof(commstack.cc1101.devAddress), NULL, &setDevAddress);               \
 /* Periodic Tx interval */                                                                                                   \
-REGISTER regTxInterval(panstamp.txInterval, sizeof(panstamp.txInterval), NULL, &setTxInterval);
+REGISTER regTxInterval(commstack.txInterval, sizeof(commstack.txInterval), NULL, &setTxInterval);
 
 /**
  * Macros for the declaration of global table of registers
@@ -118,10 +118,10 @@ const void setSysState(byte id, byte *state)                \
   {                                                         \
     case SYSTATE_RESTART:                                   \
       /* Send status message before restarting the mote */  \
-      panstamp.reset();                                     \
+      commstack.reset();                                     \
       break;                                                \
     default:                                                \
-      panstamp.systemState = state[0];                      \
+      commstack.systemState = state[0];                      \
       break;                                                \
   }                                                         \
 }                                                           \
@@ -143,9 +143,9 @@ const void setFreqChannel(byte id, byte *channel)           \
     SWSTATUS packet = SWSTATUS(regFreqChannel.id, channel, regFreqChannel.length); \
     packet.send();                                     \
     /* Update register value */                             \
-    panstamp.cc1101.setChannel(channel[0], true);           \
+    commstack.cc1101.setChannel(channel[0], true);           \
     /* Restart device */                                    \
-    panstamp.reset();                                       \
+    commstack.reset();                                       \
   }                                                         \
 }                                                           \
                                                             \
@@ -166,7 +166,7 @@ const void setDevAddress(byte id, byte *addr)               \
     SWSTATUS packet = SWSTATUS(regDevAddress.id, addr, regDevAddress.length); \
     packet.send();                                          \
     /* Update register value */                             \
-    panstamp.cc1101.setDevAddress(addr[0], true);           \
+    commstack.cc1101.setDevAddress(addr[0], true);           \
   }                                                         \
 }                                                           \
                                                             \
@@ -187,7 +187,7 @@ const void setNetworkId(byte rId, byte *nId)                \
     SWSTATUS packet = SWSTATUS(regNetworkId.id, nId, regNetworkId.length); \
     packet.send();                                          \
     /* Update register value */                             \
-    panstamp.cc1101.setSyncWord(nId, true);                 \
+    commstack.cc1101.setSyncWord(nId, true);                 \
   }                                                         \
 }                                                           \
 /**                                                         \
@@ -203,7 +203,7 @@ const void setTxInterval(byte id, byte *interval)           \
   if ((interval[0] != regTxInterval.value[0]) ||            \
       (interval[1] != regTxInterval.value[1]))              \
   {                                                         \
-    panstamp.setTxInterval(interval, true);                 \
+    commstack.setTxInterval(interval, true);                 \
   }                                                         \
 }
 #endif

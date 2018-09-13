@@ -1,20 +1,20 @@
 /**
- * Copyright (c) 2011 panStamp <contact@autonity.de>
+ * Copyright (c) 2018 autonity <contact@autonity.de>
  * 
  * This file is part of the spaxxity project.
  * 
- * panStamp  is free software; you can redistribute it and/or modify
+ * spaxxity is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or
  * any later version.
  * 
- * panStamp is distributed in the hope that it will be useful,
+ * spaxxity is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  * 
  * You should have received a copy of the GNU Lesser General Public License
- * along with panStamp; if not, write to the Free Software
+ * along with spaxxity; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
@@ -61,7 +61,7 @@ void REPEATER::packetHandler(SWPACKET *packet)
   if (enabled)
   {
     // Don't repeat packets addressed to our device
-    if (packet->destAddr != panstamp.cc1101.devAddress)
+    if (packet->destAddr != commstack.cc1101.devAddress)
     {
       // Don't repeat beyond the maximum hop count
       if (packet->hop < maxHopCount)
@@ -92,7 +92,7 @@ void REPEATER::packetHandler(SWPACKET *packet)
         // Repeat packet?
         if (repeatPacket)
         {
-          packet->srcAddr = panstamp.cc1101.devAddress;   // Modify source address
+          packet->srcAddr = commstack.cc1101.devAddress;   // Modify source address
           packet->hop++;                                  // Increment hop counter
           delay(SWAP_TX_DELAY);                           // Delay before sending
           if (packet->send())                             // Repeat packet

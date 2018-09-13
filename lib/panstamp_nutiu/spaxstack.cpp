@@ -1,20 +1,20 @@
 /**
- * Copyright (c) 2011 panStamp <contact@autonity.de>
+ * Copyright (c) 2018 autonity <contact@autonity.de>
  * 
  * This file is part of the spaxxity project.
  * 
- * panStamp  is free software; you can redistribute it and/or modify
+ * spaxxity is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or
  * any later version.
  * 
- * panStamp is distributed in the hope that it will be useful,
+ * spaxxity is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  * 
  * You should have received a copy of the GNU Lesser General Public License
- * along with panStamp; if not, write to the Free Software
+ * along with spaxxity; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
@@ -47,7 +47,7 @@ extern REGISTER* regTable[];
 extern byte regTableSize;
 
 /**
- * PANSTAMP
+ * commstack
  *
  * Class constructor
  */
@@ -103,7 +103,7 @@ void cc1101Interrupt(void){
 // set the flag that a package is available
   sleep_disable();
   detachInterrupt(0);
-  panstamp.packetAvailable = true;
+  commstack.packetAvailable = true;
 }
 
 void enterDeepSleepWithRx(){
@@ -189,31 +189,26 @@ void isrGDO0event(void)
   // Disable interrupt
   disableIRQ_GDO0();
 
-  if (panstamp.cc1101.rfState == RFSTATE_RX)
+  if (commstack.cc1101.rfState == RFSTATE_RX)
   {
     static CCPACKET ccPacket;
     static SWPACKET swPacket;
     REGISTER *reg;
-    static bool eval = true;
 
-    if (panstamp.cc1101.receiveData(&ccPacket) > 0)
+    if (commstack.cc1101.receiveData(&ccPacket) > 0)
     {
       if (ccPacket.crc_ok)
       {
         swPacket = SWPACKET(ccPacket);
-
         // Repeater enabled?
-        if (panstamp.repeater != NULL)
-          panstamp.repeater->packetHandler(&swPacket);
-
-        if (eval)
-        {
+        if (commstack.repeater != NULL)
+          commstack.repeater->packetHandler(&swPacket);
           // Function
-          switch(swPacket.function)
-          {
+        switch(swPacket.function)
+        {
             case SWAPFUNCT_CMD:
               // Command not addressed to us?
-              if (swPacket.destAddr != panstamp.cc1101.devAddress)
+              if (swPacket.destAddr != commstack.cc1101.devAddress)
                 break;
               // Current version does not support data recording mode
               // so destination address and register address must be the same
@@ -236,7 +231,7 @@ void isrGDO0event(void)
                   break;
               }
               // Query not addressed to us?
-              else if (swPacket.destAddr != panstamp.cc1101.devAddress)
+              else if (swPacket.destAddr != commstack.cc1101.devAddress)
                 break;
               // Current version does not support data recording mode
               // so destination address and register address must be the same
@@ -249,13 +244,14 @@ void isrGDO0event(void)
               break;
             case SWAPFUNCT_STA:
               // User callback function declared?
-              if (panstamp.statusReceived != NULL)
-                panstamp.statusReceived(&swPacket);
+              if (commstack.statusReceived != NULL)
+                commstack.statusReceived(&swPacket);
               break;
             default:
               break;
-          }
         }
+      }else{
+        DEBUG("CRC ERR");
       }
     }
   }
@@ -270,7 +266,7 @@ void isrGDO0event(void)
  */
 
 ISR(WDT_vect){
-    panstamp.f_wdt +=1;
+    commstack.f_wdt +=1;
 }
 
 /**
@@ -332,7 +328,7 @@ void SPAXSTACK::setup_rtc(byte time)
 /**
  * init
  * 
- * Initialize panStamp board
+ * Initialize commstack board
  */
 void SPAXSTACK::init() 
 {
@@ -370,15 +366,15 @@ void SPAXSTACK::init()
 /**
  * reset
  * 
- * Reset panStamp
+ * Reset commstack
  */
 void SPAXSTACK::reset() 
 {
-  // Tell the network that our panStamp is restarting
+  // Tell the network that our spaxxity is restarting
   stackState = SYSTATE_RESTART;
   getRegister(REGI_SYSSTATE)->sendSwapStatus();
 
-  // Reset panStamp
+  // Reset commstack
   wdt_disable();  
   wdt_enable(WDTO_15MS);
   while (1) {}
@@ -387,7 +383,7 @@ void SPAXSTACK::reset()
 /**
  * sleepWd
  * 
- * Put panStamp into Power-down state during "time".
+ * Put commstack into Power-down state during "time".
  * This function uses the internal watchdog timer in order to exit (interrupt)
  * from the power-down state
  * 
@@ -407,7 +403,7 @@ void SPAXSTACK::sleepWd(byte time)
 {
   // Power-down CC1101
   cc1101.setPowerDownState();
-  // Power-down panStamp
+  // Power-down commstack
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
   sleep_enable();
   setup_watchdog(time);
@@ -430,7 +426,7 @@ void SPAXSTACK::sleepWd(byte time)
 /**
  * sleepRtc
  * 
- * Put panStamp into Power-down state during "time".
+ * Put commstack into Power-down state during "time".
  * This function uses Timer 2 connected to an external 32.768KHz crystal
  * in order to exit (interrupt) from the power-down state
  * 
@@ -445,7 +441,7 @@ void SPAXSTACK::sleepRtc(byte time)
 {
   // Power-down CC1101
   cc1101.setPowerDownState();
-  // Power-down panStamp
+  // Power-down commstack
   set_sleep_mode(SLEEP_MODE_PWR_SAVE);
   sleep_enable();
   setup_rtc(time);
@@ -646,9 +642,19 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
 /**
  * Pre-instantiate SPAXSTACK object
  */
-SPAXSTACK panstamp;
-
-
+SPAXSTACK commstack;
+/**
+ * waitState
+ * 
+ * Waits that the RX IRQ sets the stack state to the given state. 
+ * 
+ * 'state'	Expected state
+ */
+boolean SPAXSTACK::waitState(byte state){
+  if (stackState == state){
+    return true;
+  }
+}
 /**
  * getAddress
  * 
@@ -656,19 +662,21 @@ SPAXSTACK panstamp;
  * 
  * 'password'	Encryption password
  */
-void SPAXSTACK::getAddress(void)
+boolean SPAXSTACK::getAddress(void)
 {
   // Broadcast addr request
   byte retry = 0;
   while (retry++ > MAX_RETRY_SEND_DATA){
     stackState = STACKSTATE_WAIT_CONFIG;
-    SWSTATUS packet = SWSTATUS(id, value, length);
+    //SWSTATUS packet = SWSTATUS(REGI_DEVADDRESS, 0, length);
+    SWQUERY query = SWQUERY();
     packet.send();
     //Wait for a response. When the status is set to SYSTATE_READY, all went fine
-    if (stackState == STACKSTATE_READY) {
-      break;
+    if (waitState(STACKSTATE_READY)) {
+      return true;
     }
   }
+  return false;
   //we are configured, going into receive mode
   cc1101.enableAddressCheck();
   sendAck();

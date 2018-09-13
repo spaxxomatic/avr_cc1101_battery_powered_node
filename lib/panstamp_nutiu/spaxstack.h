@@ -1,21 +1,21 @@
 /**
  * Copyright (c) 2011 autonity <contact@autonity.de>
  * 
- * This file is derived from the panStamp project. 
+ * This file is derived from the commstack project. 
  * Credits to Daniel Berenguer
  * 
- * panStamp  is free software; you can redistribute it and/or modify
+ * spaxxity is free software; you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or
  * any later version.
  * 
- * panStamp is distributed in the hope that it will be useful,
+ * spaxxity is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU Lesser General Public License for more details.
  * 
  * You should have received a copy of the GNU Lesser General Public License
- * along with panStamp; if not, write to the Free Software
+ * along with spaxxity; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
  * USA
  * 
@@ -32,6 +32,7 @@
 #include "nvolat.h"
 #include "register.h"
 #include "swpacket.h"
+#include "swquery.h"
 #include "config.h"
 #include "repeater.h"
 #include <avr/wdt.h>
@@ -191,21 +192,21 @@ class SPAXSTACK
     /**
      * init
      * 
-     * Initialize panStamp board
+     * Initialize commstack board
      */
     void init(void);
 
     /**
      * reset
      * 
-     * Reset panStamp
+     * Reset commstack
      */
     void reset(void);
 
     /**
      * sleepWd
      * 
-     * Put panStamp into Power-down state during "time".
+     * Put commstack into Power-down state during "time".
      * This function uses the internal watchdog timer in order to exit (interrupt)
      * from the power-doen state
      * 
@@ -226,7 +227,7 @@ class SPAXSTACK
     /**
      * sleepRtc
      * 
-     * Put panStamp into Power-down state during "time".
+     * Put commstack into Power-down state during "time".
      * This function uses Timer 2 connected to an external 32.768KHz crystal
      * in order to exit (interrupt) from the power-down state
      * 
@@ -263,7 +264,7 @@ class SPAXSTACK
      * Sends a broadcast request for a device address. When addr is received, sets it and enables cc1101 packet filtering
      * 
      */
-    void getAddress(void);
+    boolean getAddress(void);
 
 
     /**
@@ -303,14 +304,7 @@ class SPAXSTACK
      * 
      * 'password'	Encryption password
      */
-    void setSmartPassword(byte* password);
-     
-     /**
-     * sendAck
-     * 
-     * sends and aknowledgement packet
-     * 
-     */
+
     void sendAck(void);
 
     /**
@@ -321,12 +315,13 @@ class SPAXSTACK
      * 
      */
     void getCapabilities(void);
+    boolean waitState(byte state);
 };
 
 /**
  * Global SPAXSTACK object
  */
-extern SPAXSTACK panstamp;
+extern SPAXSTACK commstack;
 
 /**
  * getRegister
