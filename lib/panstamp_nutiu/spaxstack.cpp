@@ -24,7 +24,7 @@
 
 #include "spaxstack.h"
 #include "commonregs.h"
-#include "commonregs.h"
+#include "coroutine.h"
 #include "calibration.h"
 #include "wdt.h"
 #include "protocol.h"
@@ -80,7 +80,7 @@ void SPAXSTACK::enableRepeater(byte maxHop)
   }
 
   if (maxHop == 0)
-    repeater->stop();
+    repeater->enabled = false;
 }
 
 /**
@@ -251,7 +251,7 @@ void isrGDO0event(void)
               break;
         }
       }else{
-        DEBUG("CRC ERR");
+        Serial.println("CRC ERR");
       }
     }
   }
@@ -669,10 +669,9 @@ boolean SPAXSTACK::getAddress(void)
   while (retry++ > MAX_RETRY_SEND_DATA){
     stackState = STACKSTATE_WAIT_CONFIG;
     //SWSTATUS packet = SWSTATUS(REGI_DEVADDRESS, 0, length);
-    SWQUERY query = SWQUERY();
-    packet.send();
+    SWQUERY(0,0,REGI_DEVADDRESS).send();
     //Wait for a response. When the status is set to SYSTATE_READY, all went fine
-    if (waitState(STACKSTATE_READY)) {
+    while (! waitState(STACKSTATE_READY)) {
       return true;
     }
   }
@@ -680,6 +679,36 @@ boolean SPAXSTACK::getAddress(void)
   //we are configured, going into receive mode
   cc1101.enableAddressCheck();
   sendAck();
-  }
 }
 
+typedef struct
+{
+    int send_retry;
+    int wait_resp_time;
+    int state;
+} cor_state;
+
+boolean SPAXSTACK::waitAddress(cor_state* cs){
+  start(cs->state) 
+
+}
+
+boolean SPAXSTACK::getAddress1(void)
+{
+  // Broadcast addr request
+  cor_state cs = {MAX_RETRY_SEND_DATA, MAX_WAIT_RESPONSE};
+  while (retry++ > MAX_RETRY_SEND_DATA){
+    stackState = STACKSTATE_WAIT_CONFIG;
+    //SWSTATUS packet = SWSTATUS(REGI_DEVADDRESS, 0, length);
+    SWQUERY(0,0,REGI_DEVADDRESS).send();
+    //Wait for a response. When the status is set to SYSTATE_READY, all went fine
+    setRxCallback();
+    while (! waitState(STACKSTATE_READY)) {
+      return true;
+    }
+  }
+  return false;
+  //we are configured, going into receive mode
+  cc1101.enableAddressCheck();
+  sendAck();
+}

@@ -5,7 +5,7 @@
     },
     "python.linting.pylintEnabled": false,
     "terminal.integrated.env.linux": {
-        "PATH": "/home/edge/.platformio/penv/bin:/home/edge/.platformio/penv:/home/edge/bin:/home/edge/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+        "PATH": "/home/edge/.platformio/penv/bin:/home/edge/.platformio/penv:/home/edge/bin:/home/edge/.local/bin:/home/edge/bin:/home/edge/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin",
         "PLATFORMIO_CALLER": "vscode"
     }
 }

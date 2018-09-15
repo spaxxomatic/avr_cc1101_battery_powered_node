@@ -32,8 +32,8 @@
 /**
  * Macros
  */
-#define start()     enabled = true
-#define stop()      enabled = false
+//#define start()     enabled = true
+//#define stop()      enabled = false
 
 /**
  * Transaction

@@ -36,7 +36,7 @@
 void REPEATER::init(byte maxHop)
 {
   maxHopCount = maxHop;
-  start();
+  enabled = true;
 }
 
 /**
