@@ -87,7 +87,7 @@ boolean SWPACKET::send(void)
     i--;
     delay(SWAP_TX_DELAY);
   }
-  
+  commstack.stackState = STACKSTATE_WAIT_ACK;
   return res;
 }
 

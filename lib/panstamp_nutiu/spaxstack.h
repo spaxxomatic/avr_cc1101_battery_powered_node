@@ -82,10 +82,18 @@ enum SYSTATE
 enum STACKSTATE
 {
   STACKSTATE_WAIT_CONFIG = 0,
+  STACKSTATE_WAIT_ACK,
   STACKSTATE_READY
 };
 
 void enterDeepSleepWithRx();
+
+typedef struct
+{
+    byte wait_resp_timeout;
+    byte state;
+} cor_state;
+
 /**
  * Class: SPAXSTACK
  * 
@@ -101,7 +109,7 @@ class SPAXSTACK
      * 'time'	Watchdog timer value
      */
     void setup_watchdog(byte time);
-
+    void(*showActivity)(void);
     /**
      * setup_rtc
      *
@@ -126,7 +134,7 @@ class SPAXSTACK
     byte seqNo ; //sequence number of the received packet
     boolean bEnterSleep;
     boolean bDebug;
-    
+    boolean ping(void) ;
     void receive_loop();
     //counter for watchdog timer
     volatile byte f_wdt ;
@@ -266,16 +274,6 @@ class SPAXSTACK
      */
     boolean getAddress(void);
 
-
-    /**
-     * sendAndStoreSystemState
-     *
-     * Stores the system state in the registry and broadcasts it
-     *
-     * 'state'  New system state
-     */
-    void sendAndStoreSystemState(SYSTATE state);
-
     /**
      * getInternalTemp
      * 
@@ -315,7 +313,8 @@ class SPAXSTACK
      * 
      */
     void getCapabilities(void);
-    boolean waitState(byte state);
+    
+    boolean waitState(cor_state* cs);
 };
 
 /**

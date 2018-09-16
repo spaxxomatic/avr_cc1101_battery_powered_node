@@ -1,10 +1,11 @@
-#include "EEPROM.h"
+//#include "EEPROM.h"
 #include "protocol.h"
 #include "wdt.h"
 //#include "cc1101.h"
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include "spaxstack.h"
+#include "device/garagentor.h"
 
 // The ACTIVITY_LED is wired to the Arduino Output 4
 #define LEDOUTPUT 4
@@ -19,10 +20,6 @@
 byte b;
 byte i;
 long counter=0;
-
-void send_init_signal(){
-  send_data(0xFF);
-}
 
 #define BATT_FULL_LEVEL 4100 //we do not want to fully load the batt because the cc1101 is directly connected to the battery (with a 0,7 drop diode)
 #define BATT_RECHARGE_LEVEL 3500
@@ -79,10 +76,7 @@ void setup(){
   digitalWrite(LEDOUTPUT, LOW);
   // blink once to signal the setup
   flashLed(2);
-  //When first started after flashing, the 
-  
-  // initialize the RF Chip
-  //cc1101.init();
+
   commstack.init();
 
   Serial.print("CC1101_PARTNUM "); //cc1101=0
@@ -91,10 +85,10 @@ void setup(){
   Serial.println(commstack.cc1101.readReg(CC1101_VERSION, CC1101_STATUS_REGISTER));
   Serial.print("CC1101_MARCSTATE ");
   Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
-
+  
+  commstack.getAddress();
   //attachInterrupt(0, cc1101signalsInterrupt, FALLING);
   //attachInterrupt(0, cc1101signalsInterrupt, LOW);
-  send_init_signal();
 }
 
 byte ReadLQI(){
@@ -128,31 +122,16 @@ bool bPrintData = false;
 #define LED_PIN 4
 
 void flashLed( uint8_t no_of_flashes){
-for (int i = 0; i < no_of_flashes; i++){
-      digitalWrite(LED_PIN, HIGH);
-      delay(30);
-      digitalWrite(LED_PIN, LOW);
-      delay(20);
-}
+  for (int i = 0; i < no_of_flashes; i++){
+        digitalWrite(LED_PIN, HIGH);
+        delay(30);
+        digitalWrite(LED_PIN, LOW);
+        delay(20);
+  }
 }
 
-void send_data(int payload) {
-    CCPACKET data;
-    data.length=10;
-    byte blinkCount=counter++;
-    data.data[0]=highByte(payload);
-    data.data[1]=lowByte(payload);
-    data.data[2]=blinkCount;
-    data.data[3]=1;
-    data.data[4]=0;
-    //cc1101.flushTxFifo ();
-    //Serial.print("MARCSTATE ");
-    //Serial.println(cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
-    if(commstack.cc1101.sendData(data)){
-      Serial.println("S:OK");
-    }else{
-      Serial.println("S:FAIL");
-    }
+void showActivity(){
+  flashLed(2);
 }
 
 bool bReply=false;
@@ -180,7 +159,7 @@ void serial_cmd() {
     commstack.cc1101.setChannel(commstack.cc1101.channel-1, true);
     bPrintChannel = true;
    } else if (rcv_char == 's'){
-      send_data(0xFF);
+      commstack.ping();
    }else if (rcv_char == 'i'){
     //bEnableWor = !bEnableWor;
    }else if (rcv_char == 'q'){
@@ -228,7 +207,6 @@ void dump_rssi(){
     Serial.print (ReadRSSI());
     Serial.print ("LQI ");
     Serial.print (ReadLQI());
-
   }
 
 
@@ -245,11 +223,11 @@ void wdt_loop(){
 void loop(){
   wdt_loop();
   serial_cmd();
-  commstack.receive_loop();
+  //commstack.receive_loop();
   
   if (bReply){
     delay(300);
-    send_data(0xAA);
+    //send_data(0xAA);
     bReply = false;
   }
   // Enable wireless reception interrupt

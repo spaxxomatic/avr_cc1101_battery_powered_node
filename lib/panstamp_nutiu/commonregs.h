@@ -25,6 +25,13 @@
 #ifndef _COMMONREGS_H
 #define _COMMONREGS_H
 #include "swstatus.h"
+#include "spaxstack.h"
+
+const void setFreqChannel(uint8_t id, uint8_t *channel);
+const void setNodeAddress(uint8_t id, uint8_t *addr);
+const void setNetworkId(uint8_t rId, uint8_t *nId);
+const void setTxInterval(uint8_t id, uint8_t *interval);
+
 /**
  * Macros for the definition of common register indexes
  */
@@ -34,7 +41,6 @@ enum CUSTOM_REGINDEX                    \
   REGI_PRODUCTCODE = 0,                 \
   REGI_HWVERSION,                       \
   REGI_FWVERSION,                       \
-  REGI_SYSSTATE,                        \
   REGI_FREQCHANNEL,                     \
   REGI_NETWORKID,                       \
   REGI_DEVADDRESS,                      \
@@ -59,14 +65,12 @@ REGISTER regHwVersion(dtHwVersion, sizeof(dtHwVersion), NULL, NULL);            
 /* Firmware version */                                                                                                       \
 static byte dtFwVersion[4] = {FIRMWARE_VERSION >> 24, FIRMWARE_VERSION >> 16 , FIRMWARE_VERSION >> 8, FIRMWARE_VERSION};     \
 REGISTER regFwVersion(dtFwVersion, sizeof(dtFwVersion), NULL, NULL);                                                         \
-/* System state */                                                                                                           \
-REGISTER regSysState(&commstack.systemState, sizeof(commstack.systemState), NULL, &setSysState);                               \
 /* Frequency channel */                                                                                                      \
 REGISTER regFreqChannel(&commstack.cc1101.channel, sizeof(commstack.cc1101.channel), NULL, &setFreqChannel);                   \
 /* Network Id */                                                                                                             \
 REGISTER regNetworkId(commstack.cc1101.syncWord, sizeof(commstack.cc1101.syncWord), NULL, &setNetworkId);                      \
 /* Device address */                                                                                                         \
-REGISTER regDevAddress(&commstack.cc1101.devAddress, sizeof(commstack.cc1101.devAddress), NULL, &setDevAddress);               \
+REGISTER regDevAddress(&commstack.cc1101.devAddress, sizeof(commstack.cc1101.devAddress), NULL, &setNodeAddress);               \
 /* Periodic Tx interval */                                                                                                   \
 REGISTER regTxInterval(commstack.txInterval, sizeof(commstack.txInterval), NULL, &setTxInterval);
 
@@ -78,11 +82,9 @@ REGISTER *regTable[] = {             \
         &regProductCode,             \
         &regHwVersion,               \
         &regFwVersion,               \
-        &regSysState,                \
         &regFreqChannel,             \
         &regNetworkId,               \
         &regDevAddress,              \
-        &regCapabilities,             \
         &regTxInterval,
 
 #define DECLARE_REGISTERS_END()      \
@@ -94,7 +96,6 @@ byte regTableSize = sizeof(regTable)/sizeof(*regTable);
  * Macro for the declaration of getter/setter functions related to all common registers
  */
 #define DECLARE_COMMON_CALLBACKS()                          \
-const void setSysState(byte id, byte *state);               \
 const void setFreqChannel(byte id, byte *channel);          \
 const void setDevAddress(byte id, byte *addr);              \
 const void setNetworkId(byte rId, byte *nId);               \
@@ -104,27 +105,6 @@ const void setTxInterval(byte id, byte *interval);
  * Macro for the definition of getter/setter functions related to all common registers
  */
 #define DEFINE_COMMON_CALLBACKS()                           \
-/**                                                         \
- * setSysState                                              \
- *                                                          \
- * Set system state                                         \
- *                                                          \
- * 'id'     Register ID                                     \
- * 'state'  New system state                                \
- */                                                         \
-const void setSysState(byte id, byte *state)                \
-{                                                           \
-  switch(state[0])                                          \
-  {                                                         \
-    case SYSTATE_RESTART:                                   \
-      /* Send status message before restarting the mote */  \
-      commstack.reset();                                     \
-      break;                                                \
-    default:                                                \
-      commstack.systemState = state[0];                      \
-      break;                                                \
-  }                                                         \
-}                                                           \
                                                             \
 /**                                                         \
  * setFreqChannel                                           \
@@ -151,14 +131,14 @@ const void setFreqChannel(byte id, byte *channel)           \
                                                             \
                                                             \
 /**                                                         \
- * setDevAddress                                            \
+ * setNodeAddress                                            \
  *                                                          \
  * Set device address                                       \
  *                                                          \
  * 'id'    Register ID                                      \
  * 'addr'  New device address                               \
  */                                                         \
-const void setDevAddress(byte id, byte *addr)               \
+const void setNodeAddress(byte id, byte *addr)               \
 {                                                           \
   if ((addr[0] > 0) && (addr[0] != regDevAddress.value[0])) \
   {                                                         \

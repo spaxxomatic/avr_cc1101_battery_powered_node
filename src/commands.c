@@ -1,8 +1,0 @@
-
-void setActorVal() {
-
-}
-
-void getStatus() {
-    
-}
