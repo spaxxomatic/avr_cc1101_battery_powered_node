@@ -41,7 +41,6 @@ SWCOMMAND::SWCOMMAND(byte dAddr, byte rAddr, byte rId, byte *val, byte len)
   destAddr = dAddr;
   srcAddr = commstack.cc1101.devAddress;
   hop = 0;
-  packetNo = commstack.packetNo;
   function = SWAPFUNCT_CMD;
   regAddr = rAddr;
   regId = rId;

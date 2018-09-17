@@ -144,7 +144,7 @@ const void setNodeAddress(byte id, byte *addr)               \
   {                                                         \
     /* Send status before setting the new address */        \
     SWSTATUS packet = SWSTATUS(regDevAddress.id, addr, regDevAddress.length); \
-    packet.send();                                          \
+    commstack.sendAck();                                          \
     /* Update register value */                             \
     commstack.cc1101.setDevAddress(addr[0], true);           \
   }                                                         \
@@ -187,4 +187,3 @@ const void setTxInterval(byte id, byte *interval)           \
   }                                                         \
 }
 #endif
-

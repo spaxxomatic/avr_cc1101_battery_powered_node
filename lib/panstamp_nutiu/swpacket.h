@@ -44,9 +44,10 @@
  */
 enum SWAPFUNCT
 {
-  SWAPFUNCT_STA = 0x00,
-  SWAPFUNCT_QRY,
-  SWAPFUNCT_CMD
+  SWAPFUNCT_STA = 0x00, // status packet
+  SWAPFUNCT_QRY, // query packet
+  SWAPFUNCT_CMD, // command packet
+  SWAPFUNCT_ACK // packet aknowledgment
 };
 
 /**

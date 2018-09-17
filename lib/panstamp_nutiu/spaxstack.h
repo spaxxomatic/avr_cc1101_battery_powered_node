@@ -152,12 +152,15 @@ class SPAXSTACK
      * CC1101 radio interface
      */
     CC1101 cc1101;
-
+    byte master_address[2];
     /**
      * Packet number
      */
-    byte packetNo;
-    
+    byte sentPacketNo;
+    /**
+     * Stack error code
+     */
+    byte errorCode;
     /**
      * System state
      */
@@ -296,11 +299,10 @@ class SPAXSTACK
     void setTxInterval(byte* interval, bool save);
 
     /**
-     * setSmartPassword
+     * sendAck
      * 
-     * Set Smart Encryption password
+     * Sends a confirmation of packet reception
      * 
-     * 'password'	Encryption password
      */
 
     void sendAck(void);

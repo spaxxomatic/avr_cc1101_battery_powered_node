@@ -75,20 +75,20 @@ void isrGDO0event(void)
           // Function
         switch(swPacket.function)
         {
-          /*
             case SWAPFUNCT_ACK:
               if (swPacket.destAddr != commstack.cc1101.devAddress){
-                if (stackState == STACKSTATE_WAIT_ACK){
-                  stackState = STACKSTATE_READY;
+                if (commstack.stackState == STACKSTATE_WAIT_ACK){
                   //check packet no
-                  if swPacket.pa
+                  if (swPacket.packetNo == commstack.sentPacketNo){
+                    commstack.stackState = STACKSTATE_READY;
+                  }
                 }else{
-                  stackErr =
+                  commstack.errorCode = STACKERR_ACK_WITHOUT_SEND;
                 }
-                
+              }else{
+                commstack.errorCode = STACKERR_WRONG_DEST_ADDR;
               }
-                break;
-*/                
+                break;                
             case SWAPFUNCT_CMD:
               // Command not addressed to us?
               if (swPacket.destAddr != commstack.cc1101.devAddress)
@@ -227,21 +227,6 @@ void SPAXSTACK::enterSleep(){
   if (bEnterSleep) enterDeepSleepWithRx();
 }
 
-void SPAXSTACK::sendAck(void){
-    CCPACKET data;
-    data.length=10;    
-    data.data[0]=highByte(ACK_HIGHBYTE);
-    data.data[1]=lowByte(ACK_LOWBYTE);
-    data.data[2]=seqNo;
-    data.data[3]=0;
-    data.data[4]=0;
-    if(cc1101.sendData(data)){
-      SERIAL_DEBUG("S:OK");
-    }else{
-      SERIAL_DEBUG("S:FAIL");
-    };  
-};
-
 void SPAXSTACK::receive_loop(){
   if(packetAvailable){
     Serial.print("!");
@@ -374,7 +359,8 @@ void SPAXSTACK::init()
   enableIRQ_GDO0();
 
   // Default values
-  packetNo = 0;
+  sentPacketNo = 0;
+  errorCode = 0;
   stackState = SYSTATE_RXON;
 }
 
@@ -639,6 +625,12 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
     EEPROM.write(EEPROM_TX_INTERVAL + 1, interval[1]);
   }
 }
+
+
+void SPAXSTACK::sendAck(void){
+  SWACK swack(master_address);  
+
+};
 
 /**
  * waitState

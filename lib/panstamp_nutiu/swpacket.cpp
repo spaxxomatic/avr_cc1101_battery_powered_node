@@ -73,7 +73,7 @@ boolean SWPACKET::send(void)
   packet.data[0] = destAddr;
   packet.data[1] = srcAddr;
   packet.data[2] = (hop << 4) & 0xF0;
-  packet.data[3] = packetNo;
+  packet.data[3] = commstack.sentPacketNo;
   packet.data[4] = function;
   packet.data[5] = regAddr;
   packet.data[6] = regId;
@@ -87,6 +87,7 @@ boolean SWPACKET::send(void)
     i--;
     delay(SWAP_TX_DELAY);
   }
+  commstack.sentPacketNo+=1; //increment packet number for next transmission
   commstack.stackState = STACKSTATE_WAIT_ACK;
   return res;
 }

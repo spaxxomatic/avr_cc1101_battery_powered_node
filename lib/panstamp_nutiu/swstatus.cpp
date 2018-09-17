@@ -39,7 +39,6 @@ SWSTATUS::SWSTATUS(byte registerId, byte *val, byte len)
   destAddr = SWAP_BCAST_ADDR;
   srcAddr = commstack.cc1101.devAddress;
   hop = 0;
-  packetNo = commstack.packetNo;
   function = SWAPFUNCT_STA;
   regAddr = commstack.cc1101.devAddress;
   regId = registerId;
@@ -47,3 +46,19 @@ SWSTATUS::SWSTATUS(byte registerId, byte *val, byte len)
   value.data = val;
 }
 
+/**
+ * SWACK
+ * 
+ * Class constructor
+ * 
+ * 'rId'	Register id
+ * '*val'	New value
+ * 'len'	Buffer length
+ */
+SWACK::SWACK(byte dAddr)
+{
+  destAddr = dAddr;
+  srcAddr = commstack.cc1101.devAddress;
+  hop = 0;
+  function = SWAPFUNCT_ACK;
+}
