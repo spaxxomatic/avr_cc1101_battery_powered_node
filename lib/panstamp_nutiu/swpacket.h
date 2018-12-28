@@ -35,7 +35,8 @@
 #define SWAP_REG_VAL_LEN       CC1101_DATA_LEN - SWAP_DATA_HEAD_LEN   // SWAP data payload - max length
 #define SWAP_BCAST_ADDR        0x00                                   // SWAP broadcast address
 #define SWAP_NB_TX_TRIES       3                                      // Number of transmission retries
-#define SWAP_TX_DELAY          commstack.cc1101.devAddress * 2         // Delay before sending
+//#define SWAP_TX_DELAY          commstack.cc1101.devAddress * 2         // Delay before sending
+#define SWAP_TX_DELAY          50         // Delay before sending
 
 #define ACK_HIGHBYTE 0xF0
 #define ACK_LOWBYTE 0xF0

@@ -21,11 +21,11 @@ byte b;
 byte i;
 long counter=0;
 
-#define BATT_FULL_LEVEL 4100 //we do not want to fully load the batt because the cc1101 is directly connected to the battery (with a 0,7 drop diode)
+#define BATT_FULL_LEVEL 4100 //we do not want to fully load the batt because the cc1101 is directly connected to the battery (with a 0,7V drop diode)
 #define BATT_RECHARGE_LEVEL 3500
 
 void enable_mains_power(boolean state){
-  Serial.print("B CHARGING ");
+  Serial.print("CHARGE ");
   if (state) {
     Serial.println("ON");
     digitalWrite(MAINS_POWER_RELAY_PIN, HIGH);
@@ -79,45 +79,15 @@ void setup(){
 
   commstack.init();
 
-  Serial.print("CC1101_PARTNUM "); //cc1101=0
-  Serial.println(commstack.cc1101.readReg(CC1101_PARTNUM, CC1101_STATUS_REGISTER));
-  Serial.print("CC1101_VERSION "); //cc1101=4
+  Serial.print("CC1101 P "); //cc1101=0
+  Serial.print(commstack.cc1101.readReg(CC1101_PARTNUM, CC1101_STATUS_REGISTER));
+  Serial.print(" V "); //cc1101=0
   Serial.println(commstack.cc1101.readReg(CC1101_VERSION, CC1101_STATUS_REGISTER));
-  Serial.print("CC1101_MARCSTATE ");
-  Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
   
   commstack.getAddress();
-  //attachInterrupt(0, cc1101signalsInterrupt, FALLING);
-  //attachInterrupt(0, cc1101signalsInterrupt, LOW);
-}
-
-byte ReadLQI(){
-  byte lqi=0;
-  byte value=0;
-  lqi=(commstack.cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER));
-  value = 0x3F - (lqi & 0x3F);
-  return value;
-}
-
-byte ReadRSSI(){
-  byte rssi=0;
-  byte value=0;
-
-  rssi=(commstack.cc1101.readReg(CC1101_RSSI, CC1101_STATUS_REGISTER));
-
-  if (rssi >= 128){
-    value = 255 - rssi;
-    value /= 2;
-    value += 74;
-  }else{
-    value = rssi/2;
-    value += 74;
-  }
-  return value;
 }
 
 bool bAdj = false;
-bool bPrintData = false;
 
 #define LED_PIN 4
 
@@ -134,7 +104,6 @@ void showActivity(){
   flashLed(2);
 }
 
-bool bReply=false;
 bool bPrintChannel=false;
 
 void serial_cmd() {
@@ -160,55 +129,25 @@ void serial_cmd() {
     bPrintChannel = true;
    } else if (rcv_char == 's'){
       commstack.ping();
-   }else if (rcv_char == 'i'){
-    //bEnableWor = !bEnableWor;
    }else if (rcv_char == 'q'){
     commstack.bEnterSleep = true;
    }else if (rcv_char == 'w'){
     commstack.bEnterSleep = false;
-   } else if (rcv_char == 'd'){
-    //dump regs
-    for (i=0; i <=CC1101_TEST0; i++){
-      Serial.println(commstack.cc1101.readReg(i, CC1101_CONFIG_REGISTER));
-      delay(4);
-      }
-   }else if (rcv_char == 'm'){
-    Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
-   }else if (rcv_char == 'p'){
-    bPrintData = !bPrintData ;
-   }else if (rcv_char == 'r'){
-      Serial.print ("RSSI ");
-      Serial.print (ReadRSSI());
-      Serial.print ("\tLQI ");
-      Serial.print (ReadLQI());
-      Serial.print (" \tpstat ");
-      Serial.println(commstack.cc1101.readReg(CC1101_PKTSTATUS, CC1101_STATUS_REGISTER), BIN);
+   } else if (rcv_char == 'D'){
+     commstack.bDebug = true;
    }
    ;
   if (bPrintChannel){
     bPrintChannel = false;
-    Serial.print ("Chan ");
-    Serial.println (commstack.cc1101.channel);
+    commstack.report_freq();
   }
   if (bAdj){
     commstack.cc1101.adjustFreq(commstack.cc1101.offset_freq1, commstack.cc1101.offset_freq0 ,true);
     bAdj = 0;
-    Serial.print(" M:");
-    Serial.print(commstack.cc1101.offset_freq1, HEX);
-    Serial.print(" m:");
-    Serial.println(commstack.cc1101.offset_freq0, HEX);
+    commstack.report_freq();
    };
   }
-
 }
-
-void dump_rssi(){
-    Serial.print ("RSSI ");
-    Serial.print (ReadRSSI());
-    Serial.print ("LQI ");
-    Serial.print (ReadLQI());
-  }
-
 
 #define WDT_CYCLES_CHECK_BAT 10
 
@@ -223,13 +162,7 @@ void wdt_loop(){
 void loop(){
   wdt_loop();
   serial_cmd();
-  //commstack.receive_loop();
-  
-  if (bReply){
-    delay(300);
-    //send_data(0xAA);
-    bReply = false;
-  }
-  // Enable wireless reception interrupt
+  commstack.receive_loop();
+  // Enable wireless reception interrupt and eventually enter sleep
   commstack.enterSleep();
 }

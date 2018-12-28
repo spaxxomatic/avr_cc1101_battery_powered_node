@@ -30,8 +30,8 @@
 #include "protocol.h"
 #include "debug.h"
 
-#define enableIRQ_GDO0()          attachInterrupt(0, isrGDO0event, FALLING);
-//#define enableIRQ_GDO0()          attachInterrupt(0, cc1101Interrupt, FALLING);
+//#define enableIRQ_GDO0()          attachInterrupt(0, isrGDO0event, FALLING);
+#define enableIRQ_GDO0()          attachInterrupt(0, cc1101Interrupt, FALLING);
 #define disableIRQ_GDO0()         detachInterrupt(0);
 
 DEFINE_COMMON_REGINDEX_START()
@@ -47,103 +47,17 @@ DEFINE_COMMON_REGINDEX_END()
 extern REGISTER* regTable[];
 extern byte regTableSize;
 
-
-/**
- * isrGDO0event
- *
- * Event on GDO0 pin (INT0). Triggered by the CC1101 on packet receive
- */
-void isrGDO0event(void)
-{
-  // Disable interrupt
+/** ----------- ISR section --------- **/
+/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
+void cc1101Interrupt(void){
+// set the flag that a package is available
+  sleep_disable();
   disableIRQ_GDO0();
-
-  if (commstack.cc1101.rfState == RFSTATE_RX)
-  {
-    static CCPACKET ccPacket;
-    static SWPACKET swPacket;
-    REGISTER *reg;
-
-    if (commstack.cc1101.receiveData(&ccPacket) > 0)
-    {
-      if (ccPacket.crc_ok)
-      {
-        swPacket = SWPACKET(ccPacket);
-        // Repeater enabled?
-        if (commstack.repeater != NULL)
-          commstack.repeater->packetHandler(&swPacket);
-          // Function
-        switch(swPacket.function)
-        {
-            case SWAPFUNCT_ACK:
-              if (swPacket.destAddr != commstack.cc1101.devAddress){
-                if (commstack.stackState == STACKSTATE_WAIT_ACK){
-                  //check packet no
-                  if (swPacket.packetNo == commstack.sentPacketNo){
-                    commstack.stackState = STACKSTATE_READY;
-                  }
-                }else{
-                  commstack.errorCode = STACKERR_ACK_WITHOUT_SEND;
-                }
-              }else{
-                commstack.errorCode = STACKERR_WRONG_DEST_ADDR;
-              }
-                break;                
-            case SWAPFUNCT_CMD:
-              // Command not addressed to us?
-              if (swPacket.destAddr != commstack.cc1101.devAddress)
-                break;
-              // Destination address and register address must be the same
-              if (swPacket.destAddr != swPacket.regAddr)
-                break;
-              // Valid register?
-              if ((reg = getRegister(swPacket.regId)) == NULL)
-                break;
-              // Filter incorrect data lengths
-              if (swPacket.value.length == reg->length)
-                reg->setData(swPacket.value.data);
-              else
-                reg->sendSwapStatus();
-              break;
-            case SWAPFUNCT_QRY:
-              // Only Product Code can be broadcasted
-              if (swPacket.destAddr == SWAP_BCAST_ADDR)
-              {
-                if (swPacket.regId != REGI_PRODUCTCODE)
-                  break;
-              }
-              // Query not addressed to us?
-              else if (swPacket.destAddr != commstack.cc1101.devAddress)
-                break;
-              // Current version does not support data recording mode
-              // so destination address and register address must be the same
-              if (swPacket.destAddr != swPacket.regAddr)
-                break;
-              // Valid register?
-              if ((reg = getRegister(swPacket.regId)) == NULL)
-                break;
-              reg->getData();
-              break;
-            case SWAPFUNCT_STA:
-              // User callback function declared?
-              if (commstack.statusReceived != NULL)
-                commstack.statusReceived(&swPacket);
-              break;
-            default:
-              break;
-        }
-      }else{
-        Serial.println("CRC ERR");
-      }
-    }
-  }
-  // Enable interrupt
-  enableIRQ_GDO0();
+  commstack.packetAvailable = true;
 }
 
 /**
- * commstack
- *
+ * 
  * Class constructor
  */
 SPAXSTACK::SPAXSTACK(void)
@@ -158,6 +72,78 @@ SPAXSTACK::SPAXSTACK(void)
   bDebug = false;
 }
 
+void SPAXSTACK::report_freq(void)
+{
+    Serial.print("Ch ");
+    Serial.print(commstack.cc1101.channel);
+    Serial.print(" M:");
+    Serial.print(commstack.cc1101.offset_freq1, HEX);
+    Serial.print(" m:");
+    Serial.println(commstack.cc1101.offset_freq0, HEX);    
+}
+
+
+byte ReadLQI(){
+  byte lqi=0;
+  byte value=0;
+  lqi=(commstack.cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER));
+  value = 0x3F - (lqi & 0x3F);
+  return value;
+}
+
+byte ReadRSSI(){
+  byte rssi=0;
+  byte value=0;
+
+  rssi=(commstack.cc1101.readReg(CC1101_RSSI, CC1101_STATUS_REGISTER));
+
+  if (rssi >= 128){
+    value = 255 - rssi;
+    value /= 2;
+    value += 74;
+  }else{
+    value = rssi/2;
+    value += 74;
+  }
+  return value;
+}
+
+void SPAXSTACK::dump_regs(void)
+{
+    //dump regs
+    uint8_t i;
+    for (i=0; i <=CC1101_TEST0; i++){
+      Serial.println(commstack.cc1101.readReg(i, CC1101_CONFIG_REGISTER));
+      delay(4);
+      }
+    Serial.print("MARC STATE ");
+    Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
+    
+    Serial.print ("RSSI ");
+    byte rssi=0;
+    byte lqi=0;
+    byte value=0;
+
+    rssi=commstack.cc1101.readReg(CC1101_RSSI, CC1101_STATUS_REGISTER);
+
+    if (rssi >= 128){
+      value = 255 - rssi;
+      value /= 2;
+      value += 74;
+    }else{
+      value = rssi/2;
+      value += 74;
+    }    
+    Serial.print (value);
+    
+    Serial.print ("\tLQI ");    
+    lqi=commstack.cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER);
+    value = 0x3F - (lqi & 0x3F);
+    Serial.print (value);
+
+    Serial.print (" \tpstat ");
+    Serial.println(commstack.cc1101.readReg(CC1101_PKTSTATUS, CC1101_STATUS_REGISTER), BIN);    
+}
 /**
  * enableRepeater
  *
@@ -192,27 +178,15 @@ REGISTER * getRegister(byte regId)
   return regTable[regId]; 
 }
 
-/** ----------- ISR section --------- **/
-/* Handle interrupt from CC1101 (INT0) gdo0 on pin2 */
-void cc1101Interrupt(void){
-// set the flag that a package is available
-  sleep_disable();
-  detachInterrupt(0);
-  commstack.packetAvailable = true;
-}
-
+//bring AVR to sleep. It will be woken up by the radio on packet receive
 void enterDeepSleepWithRx(){
-      //bring AVR to sleep. It will be woken up by the radio on packet receive
-
     WDTCSR |= (1<<WDCE) | (1<<WDE);
     //WDTCSR = 1<<WDP0 | 1<<WDP3; // set new watchdog timeout prescaler to 8.0 seconds    
     WDTCSR = WDPS_1S ;
     WDTCSR |= _BV(WDIE); // Enable the WD interrupt (no reset)
-    //cc1101.setPowerDownState();
     
     sleep_enable();
     attachInterrupt(0, cc1101Interrupt, HIGH);
-    /* 0, 1, or many lines of code here */
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     cli();
     sleep_bod_disable();
@@ -227,42 +201,11 @@ void SPAXSTACK::enterSleep(){
   if (bEnterSleep) enterDeepSleepWithRx();
 }
 
-void SPAXSTACK::receive_loop(){
-  if(packetAvailable){
-    Serial.print("!");
-    // clear the flag
-    packetAvailable = false;
-    CCPACKET packet;
-    delay(2); //if not delayed here, there are CRC errors after coming back from sleep mode
-    if(cc1101.receiveData(&packet) > 0){
-      if(!packet.crc_ok) {
-        Serial.println("crc err");
-      }
-      //flashLed(2);
-      if (bDebug){
-        if(packet.length > 0){
-          //Serial.print("packet: len ");
-          //Serial.print(packet.length);
-          Serial.print("D: ");
-          for(int j=0; j<packet.length; j++){
-            Serial.print(packet.data[j],HEX);
-          }
-        }
-      }
-      //send ACK
-      sendAck();
-    }else{
-       Serial.println("No data");
-    }
-  }
-}
-
 /**
  * ISR(WDT_vect)
  *
  * Watchdog ISR. Called whenever a watchdog interrupt occurs
  */
-
 ISR(WDT_vect){
     commstack.f_wdt +=1;
 }
@@ -332,7 +275,6 @@ void SPAXSTACK::init()
 {
   // Calibrate internal RC oscillator
   rtcCrystal = rcOscCalibrate();
-
   // Setup CC1101
   cc1101.init();
   //first start after flashing, the EEPROM is not set yet
@@ -626,7 +568,6 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
   }
 }
 
-
 void SPAXSTACK::sendAck(void){
   SWACK swack(master_address);  
 
@@ -681,9 +622,116 @@ boolean SPAXSTACK::getAddress(void)
  * Checks if a server can be reached
  */
 boolean SPAXSTACK::ping(void) {
-  SWQUERY(0,0,REGI_DEVADDRESS).send(); //stack state is set to  STACKSTATE_WAIT_ACK
-  cor_state cs = {MAX_WAIT_RESPONSE, STACKSTATE_READY};
-  return waitState(&cs);
+  SERIAL_DEBUG("Ping");
+  if (SWQUERY(0,0,REGI_DEVADDRESS).send())
+  SERIAL_DEBUG("Sent"); //stack state is set to  STACKSTATE_WAIT_ACK
+  //TODO: Wait response
+  return true;
+  //cor_state cs = {MAX_WAIT_RESPONSE, STACKSTATE_READY};
+  //return waitState(&cs);
+}
+
+
+/**
+ * spaxstack packet decoder
+ *
+ */
+void SPAXSTACK::decodePacket(void){
+    static SWPACKET swPacket;
+    REGISTER *reg;
+    swPacket = SWPACKET(ccPacket);
+    // Function
+    switch(swPacket.function)
+    {
+        case SWAPFUNCT_ACK:
+          if (swPacket.destAddr != cc1101.devAddress){
+            if (commstack.stackState == STACKSTATE_WAIT_ACK){
+              //check packet no
+              if (swPacket.packetNo == sentPacketNo){
+                stackState = STACKSTATE_READY;
+              }
+            }else{
+              errorCode = STACKERR_ACK_WITHOUT_SEND;
+            }
+          }else{
+            errorCode = STACKERR_WRONG_DEST_ADDR;
+          }
+            break;                
+        case SWAPFUNCT_CMD:
+          // Command not addressed to us?
+          if (swPacket.destAddr != cc1101.devAddress)
+            break;
+          // Destination address and register address must be the same
+          if (swPacket.destAddr != swPacket.regAddr)
+            break;
+          // Valid register?
+          if ((reg = getRegister(swPacket.regId)) == NULL)
+            break;
+          // Filter incorrect data lengths
+          if (swPacket.value.length == reg->length)
+            reg->setData(swPacket.value.data);
+          else
+            reg->sendSwapStatus();
+          break;
+        case SWAPFUNCT_QRY:
+          // Only Product Code can be broadcasted
+          if (swPacket.destAddr == SWAP_BCAST_ADDR)
+          {
+            if (swPacket.regId != REGI_PRODUCTCODE)
+              break;
+          }
+          // Query not addressed to us?
+          else if (swPacket.destAddr != cc1101.devAddress)
+            break;
+          // Current version does not support data recording mode
+          // so destination address and register address must be the same
+          if (swPacket.destAddr != swPacket.regAddr)
+            break;
+          // Valid register?
+          if ((reg = getRegister(swPacket.regId)) == NULL)
+            break;
+          reg->getData();
+          break;
+        case SWAPFUNCT_STA:
+          // User callback function declared?
+          if (statusReceived != NULL)
+            statusReceived(&swPacket);
+          break;
+        default:
+          break;
+    }
+}
+
+void SPAXSTACK::receive_loop(){
+  //if (cc1101.rfState == RFSTATE_RX) //needed??
+  if(packetAvailable){
+    Serial.print("!");
+    // clear the flag
+    packetAvailable = false;
+    CCPACKET packet;
+    delay(2); //need a short delay here. Without this there are CRC errors after coming back from sleep mode
+    if(cc1101.receiveData(&packet) > 0){
+      if(!packet.crc_ok) {
+        Serial.println("CRC ERR");
+      }
+      //flashLed(2);
+      if (bDebug){
+        if(packet.length > 0){
+          //Serial.print("packet: len ");
+          //Serial.print(packet.length);
+          Serial.print("D: ");
+          for(int j=0; j<packet.length; j++){
+            Serial.print(packet.data[j],HEX);
+          }
+          Serial.println("");
+        }
+      }
+      //send ACK
+      sendAck();
+    }else{
+       Serial.println("No data");
+    }
+  }
 }
 
 /**

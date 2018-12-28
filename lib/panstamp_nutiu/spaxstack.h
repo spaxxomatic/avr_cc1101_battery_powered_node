@@ -123,7 +123,7 @@ class SPAXSTACK
      */
     void setup_rtc(byte time);
     // a flag that a wireless packet has been received
-
+    void decodePacket(void);
   public:
     /**
      * repeater
@@ -136,6 +136,7 @@ class SPAXSTACK
     boolean bDebug;
     boolean ping(void) ;
     void receive_loop();
+    
     //counter for watchdog timer
     volatile byte f_wdt ;
     //flags reception available, will by set by the ISR
@@ -192,7 +193,9 @@ class SPAXSTACK
      * SWAP status packet received. Callaback function
      */
     void (*statusReceived)(SWPACKET *status);
-
+    void report_freq(void);
+    
+    void dump_regs(void);
     /**
      * SPAXSTACK
      *

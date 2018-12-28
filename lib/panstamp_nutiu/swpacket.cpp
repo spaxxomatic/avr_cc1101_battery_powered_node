@@ -82,13 +82,20 @@ boolean SWPACKET::send(void)
     packet.data[i+7] = value.data[i];
 
   i = SWAP_NB_TX_TRIES;
+  //TODO: remove print 
+       for(int j=0; j<7; j++){
+        if (j>0) Serial.print(":");
+        Serial.print(packet.data[j],HEX);
+      }
+      Serial.println(" ");
+  
   while(!(res = commstack.cc1101.sendData(packet)) && i>1)
   {
     i--;
     delay(SWAP_TX_DELAY);
   }
   commstack.sentPacketNo+=1; //increment packet number for next transmission
-  commstack.stackState = STACKSTATE_WAIT_ACK;
+  //commstack.stackState = STACKSTATE_WAIT_ACK;
   return res;
 }
 
