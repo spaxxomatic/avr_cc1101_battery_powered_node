@@ -123,7 +123,7 @@ class SPAXSTACK
      */
     void setup_rtc(byte time);
     // a flag that a wireless packet has been received
-    void decodePacket(void);
+    void decodePacket(CCPACKET* ccpacket);
   public:
     /**
      * repeater

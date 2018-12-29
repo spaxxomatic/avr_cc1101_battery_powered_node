@@ -120,7 +120,7 @@ class SWPACKET : public CCPACKET
      * 
      * 'packet'	Raw CC1101 packet
      */
-    SWPACKET(CCPACKET packet);
+    SWPACKET(CCPACKET* packet);
 
     /**
      * SWPACKET

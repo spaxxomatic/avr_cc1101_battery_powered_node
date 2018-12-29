@@ -1,27 +1,3 @@
-/**
- * Copyright (c) 2018 autonity <contact@autonity.de>
- * 
- * This file is part of the spaxxity project.
- * 
- * spaxxity is free software; you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * any later version.
- * 
- * spaxxity is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with spaxxity; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 
- * USA
- * 
- * Author: Daniel Berenguer, Lucian Nutiu 
- * Creation date: 03/03/2011
- */
-
 #include "spaxstack.h"
 #include "commonregs.h"
 #include "coroutine.h"
@@ -82,40 +58,15 @@ void SPAXSTACK::report_freq(void)
     Serial.println(commstack.cc1101.offset_freq0, HEX);    
 }
 
-
-byte ReadLQI(){
-  byte lqi=0;
-  byte value=0;
-  lqi=(commstack.cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER));
-  value = 0x3F - (lqi & 0x3F);
-  return value;
-}
-
-byte ReadRSSI(){
-  byte rssi=0;
-  byte value=0;
-
-  rssi=(commstack.cc1101.readReg(CC1101_RSSI, CC1101_STATUS_REGISTER));
-
-  if (rssi >= 128){
-    value = 255 - rssi;
-    value /= 2;
-    value += 74;
-  }else{
-    value = rssi/2;
-    value += 74;
-  }
-  return value;
-}
-
 void SPAXSTACK::dump_regs(void)
 {
     //dump regs
-    uint8_t i;
+    /*uint8_t i;
     for (i=0; i <=CC1101_TEST0; i++){
       Serial.println(commstack.cc1101.readReg(i, CC1101_CONFIG_REGISTER));
       delay(4);
       }
+    */      
     Serial.print("MARC STATE ");
     Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
     
@@ -280,11 +231,12 @@ void SPAXSTACK::init()
   //first start after flashing, the EEPROM is not set yet
   //freq offset must be set to 0
   if (cc1101.offset_freq0 == 0xFF && cc1101.offset_freq1 == 0xFF ){ 
-    Serial.print("Resetting freq regs to 0"); 
+    Serial.println("Resetting freq regs to 0"); 
     cc1101.adjustFreq(0x00, 0x00 ,true);
   }  
   cc1101.setSyncWord(SYNCWORD1, SYNCWORD0);
-  cc1101.setDevAddress(0xFF, false);
+  uint8_t devaddr = EEPROM.read(EEPROM_DEVICE_ADDR);
+  cc1101.setDevAddress(devaddr, false);
   cc1101.setCarrierFreq(CFREQ_433);
   cc1101.disableAddressCheck(); //if not specified, will only display "packet received"
 
@@ -568,9 +520,8 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
   }
 }
 
-void SPAXSTACK::sendAck(void){
-  SWACK swack(master_address);  
-
+void SPAXSTACK::sendAck(void){ 
+  //SWACK swack(master_address);  
 };
 
 /**
@@ -636,7 +587,7 @@ boolean SPAXSTACK::ping(void) {
  * spaxstack packet decoder
  *
  */
-void SPAXSTACK::decodePacket(void){
+void SPAXSTACK::decodePacket(CCPACKET* ccPacket){
     static SWPACKET swPacket;
     REGISTER *reg;
     swPacket = SWPACKET(ccPacket);
@@ -714,20 +665,21 @@ void SPAXSTACK::receive_loop(){
       if(!packet.crc_ok) {
         Serial.println("CRC ERR");
       }
-      //flashLed(2);
+      //showActivity();
       if (bDebug){
         if(packet.length > 0){
           //Serial.print("packet: len ");
           //Serial.print(packet.length);
           Serial.print("D: ");
           for(int j=0; j<packet.length; j++){
-            Serial.print(packet.data[j],HEX);
+            if (j>0) SERIAL_DEBUGC(":");
+            SERIAL_DEBUGC(packet.data[j],HEX);
           }
-          Serial.println("");
+          SERIAL_DEBUG(" ");
+          
         }
       }
-      //send ACK
-      sendAck();
+      decodePacket(&packet);  
     }else{
        Serial.println("No data");
     }

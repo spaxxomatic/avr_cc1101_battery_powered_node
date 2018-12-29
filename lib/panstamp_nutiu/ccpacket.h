@@ -66,6 +66,8 @@ class CCPACKET
      * Link Quality Index
      */
     byte lqi;
+
+    void printAsHex(void);
 };
 
 #endif

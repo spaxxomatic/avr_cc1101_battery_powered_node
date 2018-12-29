@@ -6,7 +6,8 @@
 #include <avr/wdt.h>
 #include "spaxstack.h"
 #include "device/garagentor.h"
-
+#include "cmd/cmd.h"
+ 
 // The ACTIVITY_LED is wired to the Arduino Output 4
 #define LEDOUTPUT 4
 
@@ -104,51 +105,6 @@ void showActivity(){
   flashLed(2);
 }
 
-bool bPrintChannel=false;
-
-void serial_cmd() {
-  if (Serial.available() > 0) {
-   int rcv_char = Serial.read();
-   if (rcv_char == '+'){
-    commstack.cc1101.offset_freq1 ++;
-    bAdj = 1;
-   } else if (rcv_char == '-'){
-    commstack.cc1101.offset_freq1 --;
-    bAdj = 1;
-   } else if (rcv_char == '6'){
-    commstack.cc1101.offset_freq0 ++;
-    bAdj = 1;
-   } else if (rcv_char == '4'){
-    commstack.cc1101.offset_freq0 --;
-    bAdj = 1;
-   } else if (rcv_char == '8'){
-    commstack.cc1101.setChannel(commstack.cc1101.channel+1, true);
-    bPrintChannel = true;
-   } else if (rcv_char == '2'){
-    commstack.cc1101.setChannel(commstack.cc1101.channel-1, true);
-    bPrintChannel = true;
-   } else if (rcv_char == 's'){
-      commstack.ping();
-   }else if (rcv_char == 'q'){
-    commstack.bEnterSleep = true;
-   }else if (rcv_char == 'w'){
-    commstack.bEnterSleep = false;
-   } else if (rcv_char == 'D'){
-     commstack.bDebug = true;
-   }
-   ;
-  if (bPrintChannel){
-    bPrintChannel = false;
-    commstack.report_freq();
-  }
-  if (bAdj){
-    commstack.cc1101.adjustFreq(commstack.cc1101.offset_freq1, commstack.cc1101.offset_freq0 ,true);
-    bAdj = 0;
-    commstack.report_freq();
-   };
-  }
-}
-
 #define WDT_CYCLES_CHECK_BAT 10
 
 void wdt_loop(){
@@ -161,7 +117,7 @@ void wdt_loop(){
 
 void loop(){
   wdt_loop();
-  serial_cmd();
+  check_serial_cmd();
   commstack.receive_loop();
   // Enable wireless reception interrupt and eventually enter sleep
   commstack.enterSleep();

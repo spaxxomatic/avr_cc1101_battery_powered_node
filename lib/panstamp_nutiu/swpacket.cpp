@@ -23,6 +23,7 @@
  */
 
 #include "swpacket.h"
+#include "debug.h"
 #include "spaxstack.h"
 
 /**
@@ -32,17 +33,17 @@
  * 
  * 'packet'	Raw CC1101 packet
  */
-SWPACKET::SWPACKET(CCPACKET packet) 
+SWPACKET::SWPACKET(CCPACKET* packet) 
 {
-  destAddr = packet.data[0];
-  srcAddr = packet.data[1];
-  hop = (packet.data[2] >> 4) & 0x0F;
-  packetNo = packet.data[3];
-  function = packet.data[4];
-  regAddr = packet.data[5];
-  regId = packet.data[6];
-  value.data = packet.data + 7;
-  value.length = packet.length - SWAP_DATA_HEAD_LEN - 1;
+  destAddr = packet->data[0];
+  srcAddr = packet->data[1];
+  hop = (packet->data[2] >> 4) & 0x0F;
+  packetNo = packet->data[3];
+  function = packet->data[4];
+  regAddr = packet->data[5];
+  regId = packet->data[6];
+  value.data = packet->data + 7;
+  value.length = packet->length - SWAP_DATA_HEAD_LEN - 1;
 }
 
 /**
@@ -82,12 +83,6 @@ boolean SWPACKET::send(void)
     packet.data[i+7] = value.data[i];
 
   i = SWAP_NB_TX_TRIES;
-  //TODO: remove print 
-       for(int j=0; j<7; j++){
-        if (j>0) Serial.print(":");
-        Serial.print(packet.data[j],HEX);
-      }
-      Serial.println(" ");
   
   while(!(res = commstack.cc1101.sendData(packet)) && i>1)
   {
