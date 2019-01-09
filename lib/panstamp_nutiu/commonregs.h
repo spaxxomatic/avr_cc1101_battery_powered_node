@@ -66,7 +66,7 @@ REGISTER regHwVersion(dtHwVersion, sizeof(dtHwVersion), NULL, NULL);            
 static byte dtFwVersion[4] = {FIRMWARE_VERSION >> 24, FIRMWARE_VERSION >> 16 , FIRMWARE_VERSION >> 8, FIRMWARE_VERSION};     \
 REGISTER regFwVersion(dtFwVersion, sizeof(dtFwVersion), NULL, NULL);                                                         \
 /* Frequency channel */                                                                                                      \
-REGISTER regFreqChannel(&commstack.cc1101.channel, sizeof(commstack.cc1101.channel), NULL, &setFreqChannel);                   \
+REGISTER regFreqChannel(&commstack.cc1101.channel, sizeof(commstack.cc1101.channel), NULL, &setFreqChannel);                 \
 /* Network Id */                                                                                                             \
 REGISTER regNetworkId(commstack.cc1101.syncWord, sizeof(commstack.cc1101.syncWord), NULL, &setNetworkId);                      \
 /* Device address */                                                                                                         \
@@ -144,7 +144,7 @@ const void setNodeAddress(byte id, byte *addr)               \
   {                                                         \
     /* Send status before setting the new address */        \
     SWSTATUS packet = SWSTATUS(regDevAddress.id, addr, regDevAddress.length); \
-    commstack.sendAck();                                          \
+    packet.send();                                           \
     /* Update register value */                             \
     commstack.cc1101.setDevAddress(addr[0], true);           \
   }                                                         \

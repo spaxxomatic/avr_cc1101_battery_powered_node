@@ -94,6 +94,7 @@ typedef struct
     byte state;
 } cor_state;
 
+void enable_wdt(void);
 /**
  * Class: SPAXSTACK
  * 
@@ -110,6 +111,7 @@ class SPAXSTACK
      */
     void setup_watchdog(byte time);
     void(*showActivity)(void);
+    void crypt(bool decrypt);
     /**
      * setup_rtc
      *
@@ -308,7 +310,7 @@ class SPAXSTACK
      * 
      */
 
-    void sendAck(void);
+    void sendAck(byte dAddr, byte packetNo);
 
     /**
      * getCapabilities

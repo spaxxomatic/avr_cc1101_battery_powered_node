@@ -1,6 +1,5 @@
 #include "spaxstack.h"
 #include "commonregs.h"
-#include "coroutine.h"
 #include "calibration.h"
 #include "wdt.h"
 #include "protocol.h"
@@ -30,6 +29,7 @@ void cc1101Interrupt(void){
   sleep_disable();
   disableIRQ_GDO0();
   commstack.packetAvailable = true;
+  FLASH_LED(2);
 }
 
 /**
@@ -50,7 +50,7 @@ SPAXSTACK::SPAXSTACK(void)
 
 void SPAXSTACK::report_freq(void)
 {
-    Serial.print("Ch ");
+    Serial.print("Ch:");
     Serial.print(commstack.cc1101.channel);
     Serial.print(" M:");
     Serial.print(commstack.cc1101.offset_freq1, HEX);
@@ -67,6 +67,7 @@ void SPAXSTACK::dump_regs(void)
       delay(4);
       }
     */      
+    report_freq();
     Serial.print("MARC STATE ");
     Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
     
@@ -87,13 +88,17 @@ void SPAXSTACK::dump_regs(void)
     }    
     Serial.print (value);
     
-    Serial.print ("\tLQI ");    
+    Serial.print ("LQI ");    
     lqi=commstack.cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER);
     value = 0x3F - (lqi & 0x3F);
     Serial.print (value);
 
     Serial.print (" \tpstat ");
     Serial.println(commstack.cc1101.readReg(CC1101_PKTSTATUS, CC1101_STATUS_REGISTER), BIN);    
+    
+    Serial.print ("Device address ");
+    Serial.println(commstack.cc1101.devAddress);    
+
 }
 /**
  * enableRepeater
@@ -129,19 +134,24 @@ REGISTER * getRegister(byte regId)
   return regTable[regId]; 
 }
 
-//bring AVR to sleep. It will be woken up by the radio on packet receive
-void enterDeepSleepWithRx(){
+//enable the watchdog timer
+void enable_wdt(){
     WDTCSR |= (1<<WDCE) | (1<<WDE);
     //WDTCSR = 1<<WDP0 | 1<<WDP3; // set new watchdog timeout prescaler to 8.0 seconds    
     WDTCSR = WDPS_1S ;
     WDTCSR |= _BV(WDIE); // Enable the WD interrupt (no reset)
-    
+}
+
+//bring AVR to sleep. It will be woken up by the radio on packet receive
+void enterDeepSleepWithRx(){
+    enable_wdt();
     sleep_enable();
     attachInterrupt(0, cc1101Interrupt, HIGH);
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     cli();
     sleep_bod_disable();
     sei();
+    digitalWrite(LEDOUTPUT, LOW); //turn off activity led, just in case 
     sleep_cpu();
     // wake up here ->
     sleep_disable();
@@ -258,7 +268,7 @@ void SPAXSTACK::init()
   stackState = SYSTATE_RXON;
 }
 
-
+#define RESET() {asm("ldi r30,0"); asm("ldi r31,0"); asm("ijmp");}
 /**
  * reset
  * 
@@ -268,10 +278,9 @@ void SPAXSTACK::reset()
 {
   // Tell the network that our spaxxity is restarting
   stackState = SYSTATE_RESTART;
+  Serial.println("RST RQ");
   // Reset commstack
-  wdt_disable();  
-  wdt_enable(WDTO_15MS);
-  while (1) {}
+  RESET();
 }
 
 /**
@@ -520,8 +529,17 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
   }
 }
 
-void SPAXSTACK::sendAck(void){ 
-  //SWACK swack(master_address);  
+void SPAXSTACK::sendAck(byte dAddr, byte packetNo){ 
+  CCPACKET packet;
+
+  packet.length = 5 ;
+  packet.data[0] = dAddr;
+  packet.data[1] = commstack.cc1101.devAddress;
+  packet.data[2] = 0;
+  packet.data[3] = packetNo;
+  packet.data[4] = SWAPFUNCT_ACK; //the function
+
+  commstack.cc1101.sendData(packet);
 };
 
 /**
@@ -534,7 +552,7 @@ void SPAXSTACK::sendAck(void){
 boolean SPAXSTACK::waitState(cor_state* cs){  
   while (cs->wait_resp_timeout-- != 0 ){
     if (stackState == cs->state) return true;  
-    showActivity(); 
+    //showActivity(); 
   }
   return false;
 }
@@ -549,6 +567,7 @@ boolean SPAXSTACK::getAddress(void)
 {
   // Broadcast addr request
   byte retry = 0;
+  if (cc1101.devAddress != 0xFF && cc1101.devAddress != 0xFF) return true;
   cor_state cs = {MAX_WAIT_RESPONSE, STACKSTATE_READY};
   while (retry++ > MAX_RETRY_SEND_DATA){
     stackState = STACKSTATE_WAIT_CONFIG;
@@ -582,7 +601,6 @@ boolean SPAXSTACK::ping(void) {
   //return waitState(&cs);
 }
 
-
 /**
  * spaxstack packet decoder
  *
@@ -592,6 +610,10 @@ void SPAXSTACK::decodePacket(CCPACKET* ccPacket){
     REGISTER *reg;
     swPacket = SWPACKET(ccPacket);
     // Function
+    //first send an ack of packet reception if the packet is adressed to us
+    if (swPacket.destAddr == cc1101.devAddress){
+      sendAck(swPacket.srcAddr, swPacket.packetNo);
+    }
     switch(swPacket.function)
     {
         case SWAPFUNCT_ACK:
@@ -663,25 +685,13 @@ void SPAXSTACK::receive_loop(){
     delay(2); //need a short delay here. Without this there are CRC errors after coming back from sleep mode
     if(cc1101.receiveData(&packet) > 0){
       if(!packet.crc_ok) {
-        Serial.println("CRC ERR");
+        SERIAL_DEBUG("CRC ERR");
       }
       //showActivity();
-      if (bDebug){
-        if(packet.length > 0){
-          //Serial.print("packet: len ");
-          //Serial.print(packet.length);
-          Serial.print("D: ");
-          for(int j=0; j<packet.length; j++){
-            if (j>0) SERIAL_DEBUGC(":");
-            SERIAL_DEBUGC(packet.data[j],HEX);
-          }
-          SERIAL_DEBUG(" ");
-          
-        }
-      }
       decodePacket(&packet);  
+      dbgprintPacket('R', &packet);
     }else{
-       Serial.println("No data");
+       Serial.println("?");
     }
   }
 }

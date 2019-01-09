@@ -40,8 +40,8 @@ class SWCOMMAND : public SWPACKET
      * 'destAddr'	Destination address
      * 'rAddr'	  Register address
      * 'rId'	    Register id
-     * '*val'	    New value
-     * 'len'	    Buffer length
+     * '*val'	    Payload
+     * 'len'	    Payload length
      */
     SWCOMMAND(byte destAddr, byte rAddr, byte rId, byte *val, byte len);
 };

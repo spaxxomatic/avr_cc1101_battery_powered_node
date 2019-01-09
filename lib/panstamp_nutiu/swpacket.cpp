@@ -38,10 +38,14 @@ SWPACKET::SWPACKET(CCPACKET* packet)
   destAddr = packet->data[0];
   srcAddr = packet->data[1];
   hop = (packet->data[2] >> 4) & 0x0F;
+  encrypted = bitRead(packet->data[2], 1);
+  
+  //todo: implement flag ACK REQUEST ackReq = (packet->data[2] >> 4) & 0x0F;
   packetNo = packet->data[3];
   function = packet->data[4];
   regAddr = packet->data[5];
   regId = packet->data[6];
+  value.is_string = bitRead(packet->data[2], 0);
   value.data = packet->data + 7;
   value.length = packet->length - SWAP_DATA_HEAD_LEN - 1;
 }
@@ -84,14 +88,44 @@ boolean SWPACKET::send(void)
 
   i = SWAP_NB_TX_TRIES;
   
-  while(!(res = commstack.cc1101.sendData(packet)) && i>1)
-  {
+  while(!(res = commstack.cc1101.sendData(packet)) && i>1){
     i--;
     delay(SWAP_TX_DELAY);
   }
   commstack.sentPacketNo+=1; //increment packet number for next transmission
   //commstack.stackState = STACKSTATE_WAIT_ACK;
   return res;
+}
+
+void SWPACKET::crypt(bool decrypt) 
+{
+  return;
+  /*TODO
+  if (decrypt)
+    nonce ^= swap.encryptPwd[9];
+
+  function ^= swap.encryptPwd[11] ^ nonce;
+  srcAddr ^= swap.encryptPwd[10] ^ nonce;
+  regAddr ^= swap.encryptPwd[8] ^ nonce;
+  regId ^= swap.encryptPwd[7] ^ nonce;
+
+  /* payload encryption not implemented yet
+  static uint8_t newData[CCPACKET_DATA_LEN];
+  byte i, j = 0;  
+  for(i=0 ; i<value.length ; i++)
+  {
+    newData[i] = value.data[i] ^ swap.encryptPwd[j] ^ nonce;
+    j++;
+    if (j == 11)  // Don't re-use last byte from password
+      j = 0;
+  }
+  if (value.length > 0)
+    value.data = newData;
+  */
+/*
+  if (!decrypt)
+    nonce ^= swap.encryptPwd[9];
+*/    
 }
 
 

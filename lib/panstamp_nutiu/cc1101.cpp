@@ -509,13 +509,9 @@ boolean CC1101::sendData(CCPACKET packet)
   }
 
   delayMicroseconds(500);
-  //TODO: remove print 
-       for(int j=0; j<packet.length; j++){
-        if (j>0) SERIAL_DEBUGC(":");
-        SERIAL_DEBUGC(packet.data[j],HEX);
-      }
-      SERIAL_DEBUG(" ");
-      
+  
+  dbgprintPacket('S', &packet);
+
   // Set data length at the first position of the TX FIFO
   writeReg(CC1101_TXFIFO,  packet.length);
   // Write data into the TX FIFO

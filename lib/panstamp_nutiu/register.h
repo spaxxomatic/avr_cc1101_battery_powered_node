@@ -79,7 +79,11 @@ class REGISTER
      * 'getValH'    Pointer to the getter function
      * 'setValH'    Pointer to the setter function
      */
-    REGISTER(byte *val, const byte len, const void (*updateValH)(byte rId), const void (*setValH)(byte rId, byte *v)):id(regIndex++), value(val), length(len), updateValue(updateValH), setValue(setValH) {};
+    REGISTER(byte *val, const byte len, const void (*updateValH)(byte rId), 
+        const void (*setValH)(byte rId, byte *v)
+        ):id(regIndex++), value(val), length(len), updateValue(updateValH), setValue(setValH) 
+        {
+        };
 
     /**
      * getData

@@ -36,7 +36,7 @@
 #define SWAP_BCAST_ADDR        0x00                                   // SWAP broadcast address
 #define SWAP_NB_TX_TRIES       3                                      // Number of transmission retries
 //#define SWAP_TX_DELAY          commstack.cc1101.devAddress * 2         // Delay before sending
-#define SWAP_TX_DELAY          50         // Delay before sending
+#define SWAP_TX_DELAY          1         // Delay before sending
 
 #define ACK_HIGHBYTE 0xF0
 #define ACK_LOWBYTE 0xF0
@@ -68,6 +68,10 @@ struct SWDATA
      * Data length
      */
     byte length;
+    /*
+    * data is non-numeric
+    */
+    bool is_string;
 };
 
 class SWPACKET : public CCPACKET
@@ -139,6 +143,11 @@ class SWPACKET : public CCPACKET
      *  False otherwise
      */
     boolean send(void);
+    boolean encrypted=false;
+
+    private:
+    void crypt(bool decrypt) ;
+    
 };
 
 #endif

@@ -2,23 +2,20 @@
 #include "Arduino.h"
 #include "spaxstack.h"
 #include "debug.h"
-
+#include "../device/battery.h"
+#include "../device/utils.h"
 volatile unsigned int cmd_vars[MAX_VAR];
 
-//Format of entries in the command table :
-// {XX {command string - 2 alphanumeric chars} , handler}, //comment *UDP* {means command can be called by the available to the UDP client and will be added to the client interface}
-
-
-COMMAND_STRUCTUR COMMAND_TABELLE[] = // Befehls-Tabelle
+COMMAND_STRUCTUR COMMAND_TABELLE[] = // Command table
 {
-	{"re",command_reset}, //[Reset] *UDP* 
-	{"fs",command_factory_settings}, //[Reset] *UDP* 
-	//{"BL",command_bootloader}, //[Bootloader]  *UDP*
+	{"re",command_reset}, 
+	{"fs",command_factory_settings}, 
 	{"sa",command_radio_addr},
 	{"dd",command_enable_debug},
 	{"pi",command_ping},
 	{"st",command_stat},
-	{"??",command_help},//[Help]
+	{"sl",command_activate_sleep},
+	{"??",command_help},
 	{{00},NULL} 
 };
 
@@ -30,6 +27,7 @@ PROGMEM const char helptext[] = {
 		"dd Enable debug output\r\n"
 		"pi Ping\r\n"
 		"st Dump status\r\n"
+		"sl Activate sleep\r\n"
 		"?? HELP\r\n"				
 		"\r\n"
 };
@@ -101,6 +99,7 @@ int readline() {
             case '\r': // cr
                 rpos = bufpos;
                 bufpos = 0;  // Reset position index ready for next time
+				Serial.print('\r');
                 return rpos;
             default:
 				if (bufpos < 2){ //first two chars are the command
@@ -142,7 +141,7 @@ unsigned char check_serial_cmd ()
 			}
 		}
 		
-		//Variablen finden und auswerten
+		//Evaluate possible incoming parameters
 		if (*param != NULL){//posible params comming
 			char* pptr = param;
 			for (unsigned char a = 0; a<MAX_VAR; a++)
@@ -157,6 +156,7 @@ unsigned char check_serial_cmd ()
 			}		
 		}
 		//Exec command
+		FLASH_LED(1);
 		COMMAND_TABELLE[cmd_index].fp();
 		return(1); 
 	}
@@ -168,7 +168,7 @@ unsigned char check_serial_cmd ()
 void command_reset (void)
 {
 	Serial.println("Reboot");
-	RESET();
+	commstack.reset();
 }
 
 void command_enable_debug (void)
@@ -184,6 +184,12 @@ void command_ping (void)
 	commstack.ping();
 }
 
+void command_activate_sleep (void)
+{
+	Serial.println("Sleep mode active");
+	commstack.bEnterSleep = true;
+}
+
 void command_factory_settings (void)
 {
 	Serial.println("Rst to factory");
@@ -191,22 +197,15 @@ void command_factory_settings (void)
 	RESET();
 }
 
-/*
-void command_bootloader (void)
-{
-	//produce a reset by activating the watchdog
-	wdt_enable(WDTO_120MS) ;while(1){};
-}
-*/
 //------------------------------------------------------------------------------
 //print/edit own IP
 void command_radio_addr (void)
 {
 	if (cmd_vars[0] > 255){
-		SERIAL_DEBUG("Invalid addr");
+		Serial.println("Invalid addr");
 	}else{
-		SERIAL_DEBUGC("Set radio addr to ");
-		SERIAL_DEBUG(cmd_vars[0]);
+		Serial.print("Set radio addr to ");
+		Serial.println(cmd_vars[0]);
 		commstack.cc1101.setDevAddress(cmd_vars[0], true);
 	}
 }
@@ -220,11 +219,14 @@ void command_help (void)
 	do
 	{
 		data = pgm_read_byte(helptest_pointer++);
-		SERIAL_DEBUGC(data);
+		Serial.print(data);
 	}while(data != 0);
 }
 
 void command_stat ()
 {
 	commstack.dump_regs();
+	Serial.print("BATT ");
+	Serial.print(checkBateryState());
+	Serial.print("mV");
 }
