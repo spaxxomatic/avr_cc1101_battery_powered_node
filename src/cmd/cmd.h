@@ -27,8 +27,10 @@
 	extern void command_factory_settings (void);
 	extern void command_enable_debug (void);
 	extern void command_ping (void);
+	extern void command_alarm (void);
 	extern void command_stat (void);
 	extern void command_activate_sleep (void);
+	extern void command_trigger_pulse(void);
 	
 	#define RESET() {asm("ldi r30,0"); asm("ldi r31,0"); asm("ijmp");}
 	

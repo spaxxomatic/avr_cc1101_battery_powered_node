@@ -27,10 +27,10 @@
 #include "swstatus.h"
 #include "spaxstack.h"
 
-const void setFreqChannel(uint8_t id, uint8_t *channel);
-const void setNodeAddress(uint8_t id, uint8_t *addr);
-const void setNetworkId(uint8_t rId, uint8_t *nId);
-const void setTxInterval(uint8_t id, uint8_t *interval);
+const uint8_t setFreqChannel(uint8_t id, uint8_t *channel);
+const uint8_t setNodeAddress(uint8_t id, uint8_t *addr);
+const uint8_t setNetworkId(uint8_t rId, uint8_t *nId);
+const uint8_t setTxInterval(uint8_t id, uint8_t *interval);
 
 /**
  * Macros for the definition of common register indexes
@@ -114,7 +114,7 @@ const void setTxInterval(byte id, byte *interval);
  * 'id'       Register ID                                   \
  * 'channel'  New channel                                   \
  */                                                         \
-const void setFreqChannel(byte id, byte *channel)           \
+const uint8_t setFreqChannel(byte id, byte *channel)           \
 {                                                           \
   if (channel[0] != regFreqChannel.value[0])                \
   {                                                         \
@@ -126,7 +126,8 @@ const void setFreqChannel(byte id, byte *channel)           \
     commstack.cc1101.setChannel(channel[0], true);           \
     /* Restart device */                                    \
     commstack.reset();                                       \
-  }                                                         \
+  };                                                    \
+  return 0;                                                \
 }                                                           \
                                                             \
                                                             \
@@ -138,7 +139,7 @@ const void setFreqChannel(byte id, byte *channel)           \
  * 'id'    Register ID                                      \
  * 'addr'  New device address                               \
  */                                                         \
-const void setNodeAddress(byte id, byte *addr)               \
+const uint8_t setNodeAddress(byte id, byte *addr)               \
 {                                                           \
   if ((addr[0] > 0) && (addr[0] != regDevAddress.value[0])) \
   {                                                         \
@@ -147,7 +148,7 @@ const void setNodeAddress(byte id, byte *addr)               \
     packet.send();                                           \
     /* Update register value */                             \
     commstack.cc1101.setDevAddress(addr[0], true);           \
-  }                                                         \
+  } ; return 0;                                               \
 }                                                           \
                                                             \
 /**                                                         \
@@ -158,7 +159,7 @@ const void setNodeAddress(byte id, byte *addr)               \
  * 'rId' Register ID                                        \
  * 'nId' New network id                                     \
  */                                                         \
-const void setNetworkId(byte rId, byte *nId)                \
+const uint8_t setNetworkId(byte rId, byte *nId)                \
 {                                                           \
   if ((nId[0] != regNetworkId.value[0]) ||                  \
       (nId[1] != regNetworkId.value[1]))                    \
@@ -168,7 +169,7 @@ const void setNetworkId(byte rId, byte *nId)                \
     packet.send();                                          \
     /* Update register value */                             \
     commstack.cc1101.setSyncWord(nId, true);                 \
-  }                                                         \
+  } return 0;                                                \
 }                                                           \
 /**                                                         \
  * setTxInterval                                            \
@@ -178,12 +179,12 @@ const void setNetworkId(byte rId, byte *nId)                \
  * 'id'        Register ID                                  \
  * 'interval'  New interval (in seconds)                    \
  */                                                         \
-const void setTxInterval(byte id, byte *interval)           \
+const uint8_t setTxInterval(byte id, byte *interval)           \
 {                                                           \
   if ((interval[0] != regTxInterval.value[0]) ||            \
       (interval[1] != regTxInterval.value[1]))              \
   {                                                         \
     commstack.setTxInterval(interval, true);                 \
-  }                                                         \
+  }  ; return 0;                                             \
 }
 #endif

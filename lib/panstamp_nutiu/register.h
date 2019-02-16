@@ -37,22 +37,6 @@ extern byte regIndex;
  */
 class REGISTER
 {
-  private:
-    /**
-     * Pointer to the register "updater" function
-     *
-     *  'rId'  Register ID     
-     */
-    const void (*updateValue)(byte rId);
-
-    /**
-     * Pointer to the register "setter" function
-     *
-     *  'rId'  Register ID     
-     *  'v'    New register value
-     */
-    const void (*setValue)(byte rId, byte *v);
-
   public:
     /**
      * Register id
@@ -68,7 +52,22 @@ class REGISTER
      * Data length
      */
     const byte length;
+    private:
+      /**
+       * Pointer to the register "updater" function
+       *
+       *  'rId'  Register ID     
+       */
+      const uint8_t (*updateValue)(byte rId);
 
+      /**
+       * Pointer to the register "setter" function
+       *
+       *  'rId'  Register ID     
+       *  'v'    New register value
+       */
+      const uint8_t (*setValue)(byte rId, byte *v);
+    public:
     /**
      * REGISTER
      * 
@@ -79,9 +78,9 @@ class REGISTER
      * 'getValH'    Pointer to the getter function
      * 'setValH'    Pointer to the setter function
      */
-    REGISTER(byte *val, const byte len, const void (*updateValH)(byte rId), 
-        const void (*setValH)(byte rId, byte *v)
-        ):id(regIndex++), value(val), length(len), updateValue(updateValH), setValue(setValH) 
+    REGISTER(byte *val, const byte len, const uint8_t (*updateValH)(byte rId), 
+        const uint8_t (*setValH)(byte rId, byte *v)
+        ):id(regIndex++), value(val), length(len), updateValue(updateValH), setValue(setValH)
         {
         };
 
@@ -91,7 +90,7 @@ class REGISTER
      * Update and get register value
      * 
      */
-    void getData();
+    uint8_t getData();
 
     /**
      * setData
@@ -100,14 +99,14 @@ class REGISTER
      * 
      * 'data'	New register value
      */
-    void setData(byte *data);
+    uint8_t setData(byte *data);
 
     /**
      * sendSwapStatus
      * 
      * Send SWAP status message
      */
-    void sendSwapStatus(void);
+    void sendSwapStatus(byte destAddr, byte packetNo);
 
     /**
      * setRegValue
@@ -117,7 +116,7 @@ class REGISTER
      *
      * 'val'   New register value
      */
-    template<class T> void setRegValue(T val)
+    template<class T> uint8_t setRegValue(T val)
     {
       uint8_t i;
 
@@ -126,6 +125,7 @@ class REGISTER
         value[i] = val & 0xFF;
         val >>= 8;
       }
+      return 0;
     }
 };
 

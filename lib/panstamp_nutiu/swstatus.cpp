@@ -39,6 +39,7 @@ SWSTATUS::SWSTATUS(byte registerId, byte *val, byte len)
   destAddr = SWAP_BCAST_ADDR;
   srcAddr = commstack.cc1101.devAddress;
   hop = 0;
+  request_ack = false;
   function = SWAPFUNCT_STA;
   regAddr = commstack.cc1101.devAddress;
   regId = registerId;

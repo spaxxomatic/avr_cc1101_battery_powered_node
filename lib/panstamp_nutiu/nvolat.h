@@ -26,7 +26,6 @@
 #define _NVOLAT_H
 
 #include "Arduino.h"
-#include <EEPROM.h>
 
 /**
  * EEPROM addresses

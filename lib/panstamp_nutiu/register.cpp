@@ -24,7 +24,8 @@
 
 #include "register.h"
 #include "swstatus.h"
-
+#include "spaxstack.h"
+#include "protocol.h"
 byte regIndex = 0;
 
 /**
@@ -32,14 +33,11 @@ byte regIndex = 0;
  * 
  * Update and get register value
  */
-void REGISTER::getData(void) 
+uint8_t REGISTER::getData(void) 
 {
   // Update register value
   if (updateValue != NULL)
     updateValue(id);
-
-  // Send SWAP status message about the new value
-  sendSwapStatus();
 }
 
 /**
@@ -49,14 +47,12 @@ void REGISTER::getData(void)
  * 
  * 'data'	New register value
  */
-void REGISTER::setData(byte *data) 
+uint8_t REGISTER::setData(byte *data) 
 {
   // Update register value
   if (setValue != NULL)
-    setValue(id, data);
-
-  // Send SWAP status message
-  sendSwapStatus();
+    return setValue(id, data);
+  else return ERR_REGISTER_HAS_NO_SETTER;
 }
 
 /**
@@ -64,9 +60,11 @@ void REGISTER::setData(byte *data)
  * 
  * Send SWAP status message
  */
-void REGISTER::sendSwapStatus(void) 
+void REGISTER::sendSwapStatus(byte destAddr, byte packetNo) 
 {
   SWSTATUS packet = SWSTATUS(id, value, length);
+  packet.destAddr = destAddr;
+  packet.packetNo = packetNo;
   packet.send();
 }
 

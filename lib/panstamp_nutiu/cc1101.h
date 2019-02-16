@@ -71,9 +71,8 @@ enum RFSTATE
 #define CC1101_STATUS_REGISTER   READ_BURST
 
 /**
- * PATABLE & FIFO's
+ * FIFO's
  */
-#define CC1101_PATABLE           0x3E        // PATABLE address
 #define CC1101_TXFIFO            0x3F        // TX FIFO address
 #define CC1101_RXFIFO            0x3F        // RX FIFO address
 
@@ -166,7 +165,8 @@ enum RFSTATE
 #define CC1101_RXBYTES           0x3B        // Overflow and Number of Bytes
 #define CC1101_RCCTRL1_STATUS    0x3C        // Last RC Oscillator Calibration Result
 #define CC1101_RCCTRL0_STATUS    0x3D        // Last RC Oscillator Calibration Result 
-
+/* TX power */
+#define CC1101_PATABLE           0x3E        // PATABLE address
 /**
  * CC1101 configuration registers - Default values extracted from SmartRF Studio
  *
@@ -266,6 +266,7 @@ enum RFSTATE
 #define CC1101_DEFVAL_TEST1      0x35        // Various Test Settings
 #define CC1101_DEFVAL_TEST0      0x09        // Various Test Settings
 
+
 /**
  * Alias for some default values
  */
@@ -303,8 +304,8 @@ enum RFSTATE
 #define setTxPowerAmp(setting)    paTableByte = setting
 // PATABLE values
 #define PA_LowPower               0x60
-//nutiu #define PA_LongDistance           0xC0
-#define PA_LongDistance           0xC8
+#define PA_LongDistance           0xC0
+//#define PA_LongDistance           0xC8
 
 /**
  * Class: CC1101
@@ -542,7 +543,12 @@ class CC1101
      * Enter Rx state
      */
     void setRxState(void);
-
+    /**
+     * checkRxState
+     * 
+     * Make sure the radio is in a clean Rx state
+     */
+    byte checkRxState(void);
     /**
      * setTxState
      * 
@@ -550,7 +556,7 @@ class CC1101
      */
     void setTxState(void);
     byte ReadLQI();
-    byte ReadRSSI();
+    float ReadRSSI();
     /**
      * setTxPowerAmp
      * 

@@ -26,7 +26,7 @@
 #include "cc1101.h"
 #include "nvolat.h"
 #include "debug.h"
-
+#include <EEPROM.h>
 /**
  * Macros
  */
@@ -225,8 +225,8 @@ void CC1101::setDefaultRegs(void)
   writeReg(CC1101_FSCTRL1,  CC1101_DEFVAL_FSCTRL1);
   writeReg(CC1101_FSCTRL0,  CC1101_DEFVAL_FSCTRL0);
 
-  // Set default carrier frequency = 868 MHz
-  setCarrierFreq(CFREQ_868);
+  // Set default carrier frequency = 433 MHz
+  setCarrierFreq(CFREQ_433);
 
   // RF speed
   writeReg(CC1101_MDMCFG4,  CC1101_DEFVAL_MDMCFG4);
@@ -571,7 +571,10 @@ byte CC1101::receiveData(CCPACKET * packet)
   byte rxBytes = readStatusReg(CC1101_RXBYTES);
 
   // Any byte waiting to be read and no overflow?
-  if (rxBytes & 0x7F && !(rxBytes & 0x80))
+  if (rxBytes & 0x80){//overflow
+     Serial.print("^");
+  }
+  else if (rxBytes & 0x7F )
   {
     // Read data length
     packet->length = readConfigReg(CC1101_RXFIFO);
@@ -625,6 +628,24 @@ void CC1101::setTxState(void)
   rfState = RFSTATE_TX;
 }
 
+byte CC1101::checkRxState(){
+   //sometimes the radio receives spurious packets and hangs. 
+  //Check the state and the buffer
+  uint8_t tries = 0;
+  uint8_t marcState = 0;
+  while (tries++ < 100 && ((marcState = readStatusReg(CC1101_MARCSTATE)) & 0x1F) != 0x0D)
+  {    
+    if (marcState == 0x11) {       // RX_OVERFLOW
+      flushRxFifo();              // flush receive queue
+    }
+    cmdStrobe(CC1101_SRX);
+  }
+  if (tries >= 100) {
+    // TODO: MarcState sometimes never enters the expected state; this is a hack workaround.
+    return 1;
+  }
+  return 0;
+}
 
 byte CC1101::ReadLQI()
 {
@@ -635,14 +656,23 @@ byte CC1101::ReadLQI()
     return value;
 }
 
-byte CC1101::ReadRSSI()
+float CC1101::ReadRSSI()
 {
     byte rssi=0;
     byte value=0;
 
     rssi=(readReg(CC1101_RSSI, CC1101_STATUS_REGISTER));
 
-    if (rssi >= 128)
+	if (rssi >= 128)
+	{
+		return ((rssi - 256) / 2.0) - 74.0;
+	}
+	else
+	{
+		return (rssi / 2.0) - 74.0;
+	}
+
+    /*if (rssi >= 128)
     {
     value = 255 - rssi;
     value /= 2;
@@ -654,4 +684,5 @@ byte CC1101::ReadRSSI()
     value += 74;
     }
     return value;
+    */
 }

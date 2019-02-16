@@ -33,7 +33,10 @@
  */
 #define SWAP_DATA_HEAD_LEN     6
 #define SWAP_REG_VAL_LEN       CC1101_DATA_LEN - SWAP_DATA_HEAD_LEN   // SWAP data payload - max length
+
 #define SWAP_BCAST_ADDR        0x00                                   // SWAP broadcast address
+#define SWAP_MASTER_ADDRESS 0X01
+
 #define SWAP_NB_TX_TRIES       3                                      // Number of transmission retries
 //#define SWAP_TX_DELAY          commstack.cc1101.devAddress * 2         // Delay before sending
 #define SWAP_TX_DELAY          1         // Delay before sending
@@ -48,7 +51,8 @@ enum SWAPFUNCT
   SWAPFUNCT_STA = 0x00, // status packet
   SWAPFUNCT_QRY, // query packet
   SWAPFUNCT_CMD, // command packet
-  SWAPFUNCT_ACK // packet aknowledgment
+  SWAPFUNCT_ACK, // packet aknowledgment
+  SWAPFUNCT_ALARM // packet aknowledgment
 };
 
 /**
@@ -144,7 +148,8 @@ class SWPACKET : public CCPACKET
      */
     boolean send(void);
     boolean encrypted=false;
-
+    boolean request_ack=false;
+    boolean isReply=false;
     private:
     void crypt(bool decrypt) ;
     

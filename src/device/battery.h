@@ -1,7 +1,12 @@
+#include "Arduino.h"
 #include "pinout.h"
 
-#define BATT_FULL_LEVEL 4100 //we do not want to fully load the batt because the cc1101 is directly connected to the battery (with a 0,7V drop diode)
-#define BATT_RECHARGE_LEVEL 3500
+#define BATT_FULL_LEVEL 4200 
+#define BATT_RECHARGE_LEVEL 3900
 
-long checkBateryState() ;
+
+#define WDT_CYCLES_CHECK_BAT 10 //about 10 sec
+#define CNT_SEND_BATT_STATUS WDT_CYCLES_CHECK_BAT*20 // 20*10 sec between batt status send
+
+uint16_t checkBateryState() ;
 void enable_mains_power(bool state);

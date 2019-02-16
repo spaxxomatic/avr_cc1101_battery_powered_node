@@ -6,19 +6,20 @@
 #include "../device/utils.h"
 volatile unsigned int cmd_vars[MAX_VAR];
 
-COMMAND_STRUCTUR COMMAND_TABELLE[] = // Command table
+COMMAND_STRUCTUR COMMAND_TABELLE[] = 
 {
 	{"re",command_reset}, 
 	{"fs",command_factory_settings}, 
 	{"sa",command_radio_addr},
 	{"dd",command_enable_debug},
 	{"pi",command_ping},
+	{"aa",command_alarm},
 	{"st",command_stat},
 	{"sl",command_activate_sleep},
+	{"pu",command_trigger_pulse},
 	{"??",command_help},
 	{{00},NULL} 
 };
-
 
 PROGMEM const char helptext[] = {
 		"re Restart\r\n"
@@ -26,8 +27,10 @@ PROGMEM const char helptext[] = {
 		"fs Reset eeprom to factory settings\r\n"
 		"dd Enable debug output\r\n"
 		"pi Ping\r\n"
+		"aa Alarm\r\n"
 		"st Dump status\r\n"
 		"sl Activate sleep\r\n"
+		"pu Pulse motor unit\r\n"
 		"?? HELP\r\n"				
 		"\r\n"
 };
@@ -35,52 +38,22 @@ PROGMEM const char helptext[] = {
 bool bPrintChannel=false;
 
 /*
-void serial_cmd() {
-  if (Serial.available() > 0) {
-	/*	  
-   int rcv_char = Serial.read();
-   if (rcv_char == '+'){
-    commstack.cc1101.offset_freq1 ++;
-    bAdj = 1;
-   } else if (rcv_char == '-'){
-    commstack.cc1101.offset_freq1 --;
-    bAdj = 1;
-   } else if (rcv_char == '6'){
+   if (rcv_char == '6'){
     commstack.cc1101.offset_freq0 ++;
     bAdj = 1;
    } else if (rcv_char == '4'){
     commstack.cc1101.offset_freq0 --;
     bAdj = 1;
-   } else if (rcv_char == '8'){
-    commstack.cc1101.setChannel(commstack.cc1101.channel+1, true);
-    bPrintChannel = true;
-   } else if (rcv_char == '2'){
-    commstack.cc1101.setChannel(commstack.cc1101.channel-1, true);
-    bPrintChannel = true;
-   } else if (rcv_char == 's'){
-      commstack.ping();
-   }else if (rcv_char == 'q'){
-    commstack.bEnterSleep = true;
-   }else if (rcv_char == 'w'){
-    commstack.bEnterSleep = false;
    } else if (rcv_char == 'D'){
      commstack.bDebug = true;
-   } else if (rcv_char == 'A'){
-     //set device address
-   }
    ;
-  if (bPrintChannel){
-    bPrintChannel = false;
-    commstack.report_freq();
-  }
   if (bAdj){
     commstack.cc1101.adjustFreq(commstack.cc1101.offset_freq1, commstack.cc1101.offset_freq0 ,true);
     bAdj = 0;
     commstack.report_freq();
    };
-  }
-}
 */
+
 #define MAX_PARAM_LENGTH 16
 static char cmd[2]; 
 static char param[MAX_PARAM_LENGTH]; 
@@ -88,7 +61,6 @@ static int bufpos = 0;
 
 int readline() {    
 	char readch = Serial.read();
-	Serial.print(readch);
     int rpos;
     if (readch > 0) {
         switch (readch) {
@@ -99,7 +71,7 @@ int readline() {
             case '\r': // cr
                 rpos = bufpos;
                 bufpos = 0;  // Reset position index ready for next time
-				Serial.print('\r');
+				Serial.println(' ');
                 return rpos;
             default:
 				if (bufpos < 2){ //first two chars are the command
@@ -111,6 +83,7 @@ int readline() {
 						bufpos++;
 					}
 				}
+				Serial.print(readch);
         }
     }
     return 0;
@@ -126,7 +99,7 @@ unsigned char check_serial_cmd ()
 	if (readline() > 0) {	
 		char *string_pointer_tmp;
 		unsigned char cmd_index = 0;
-		Serial.println(" ");
+		//Serial.println(" ");
 		//Kommando in Tabelle suchen
 		while(1)
 		{
@@ -142,7 +115,7 @@ unsigned char check_serial_cmd ()
 		}
 		
 		//Evaluate possible incoming parameters
-		if (*param != NULL){//posible params comming
+		if (*param != 0){//posible params comming
 			char* pptr = param;
 			for (unsigned char a = 0; a<MAX_VAR; a++)
 			{ 
@@ -178,16 +151,24 @@ void command_enable_debug (void)
 	Serial.println(commstack.bDebug);
 }
 
-
 void command_ping (void)
 {
+	uint8_t no_of_pings = cmd_vars[0];
+	if (no_of_pings == 0){
+		no_of_pings = 1;
+	}
 	commstack.ping();
+}
+
+void command_alarm (void)
+{
+	commstack.sendControlPkt(SWAPFUNCT_ALARM, SWAP_MASTER_ADDRESS, 0, 1);
 }
 
 void command_activate_sleep (void)
 {
 	Serial.println("Sleep mode active");
-	commstack.bEnterSleep = true;
+	commstack.bSleepActivated = true;
 }
 
 void command_factory_settings (void)
@@ -216,8 +197,7 @@ void command_help (void)
 {
 	char data;
 	PGM_P helptest_pointer = helptext;
-	do
-	{
+	do{
 		data = pgm_read_byte(helptest_pointer++);
 		Serial.print(data);
 	}while(data != 0);
@@ -228,5 +208,11 @@ void command_stat ()
 	commstack.dump_regs();
 	Serial.print("BATT ");
 	Serial.print(checkBateryState());
-	Serial.print("mV");
+	Serial.println("mV");
+}
+
+void command_trigger_pulse ()
+{
+		Serial.print("Pulse motor unit");
+		SEND_MOTORUNIT_PULSE;		
 }

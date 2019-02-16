@@ -27,8 +27,9 @@
 #define _SPAXSTACK_H
 
 #include "Arduino.h"
-#include "EEPROM.h"
+//#include "EEPROM.h"
 #include "cc1101.h"
+#include <EEPROM.h>
 #include "nvolat.h"
 #include "register.h"
 #include "swpacket.h"
@@ -52,7 +53,6 @@
 /**
  * Macros
  */
-#define setSwapStatusCallBack(ptrFunc)   statusReceived = ptrFunc
 
 #define eepromToFactoryDefaults()                             \
   EEPROM.write(EEPROM_SYNC_WORD, CC1101_DEFVAL_SYNC1);        \
@@ -134,7 +134,9 @@ class SPAXSTACK
      */
     
     byte seqNo ; //sequence number of the received packet
-    boolean bEnterSleep;
+    
+    volatile boolean bEnterSleep;
+    boolean bSleepActivated;
     boolean bDebug;
     boolean ping(void) ;
     void receive_loop();
@@ -157,10 +159,6 @@ class SPAXSTACK
     CC1101 cc1101;
     byte master_address[2];
     /**
-     * Packet number
-     */
-    byte sentPacketNo;
-    /**
      * Stack error code
      */
     byte errorCode;
@@ -168,7 +166,11 @@ class SPAXSTACK
      * System state
      */
     byte stackState;
-
+    /**
+     * Connection state;
+     */
+    bool crc_err;
+    byte rssi;
     /**
      * Interval between periodic transmissions. 0 for asynchronous transmissions
      */
@@ -181,7 +183,7 @@ class SPAXSTACK
      * Enable repeater mode
      */
     void enableRepeater(void);
-
+    void printPacketState();
     /**
      * enableRepeater
      *
@@ -310,7 +312,7 @@ class SPAXSTACK
      * 
      */
 
-    void sendAck(byte dAddr, byte packetNo);
+    void sendControlPkt(byte function, byte dAddr, byte packetNo, byte errorReason);
 
     /**
      * getCapabilities

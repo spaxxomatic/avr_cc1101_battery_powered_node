@@ -46,5 +46,6 @@ SWCOMMAND::SWCOMMAND(byte dAddr, byte rAddr, byte rId, byte *val, byte len)
   regId = rId;
   value.data = val;
   value.length = len;
+  request_ack = true;
 }
 

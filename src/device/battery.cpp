@@ -7,8 +7,11 @@
 
 bool keep_charger_on=false;
 
+extern byte batt_voltage[2];
+extern uint8_t cnt_send_batt_state;
+
 void enable_mains_power(bool state){
-  if (keep_charger_on) return;
+  if (keep_charger_on) digitalWrite(MAINS_POWER_RELAY_PIN, LOW);
   Serial.print("CHRG ");
   digitalWrite(MAINS_POWER_RELAY_PIN, !state); //inverted
   state?Serial.println("ON"):Serial.println("OFF");
@@ -16,7 +19,7 @@ void enable_mains_power(bool state){
 
 }
 
-long checkBateryState() {
+uint16_t checkBateryState() {
   // Read 1.1V reference against AVcc
   // set the reference to Vcc and the measurement to the internal 1.1V reference
   #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
@@ -36,15 +39,21 @@ long checkBateryState() {
   uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
   uint8_t high = ADCH; // unlocks both
 
-  long result = (high<<8) | low;
+  uint16_t result = (high<<8) | low;
 
   result = 1125300L / result; // Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
   //return result; // Vcc in millivolts
   if (result >= BATT_FULL_LEVEL) { //batt loaded
     enable_mains_power(false);
-  }
-  if (result <= BATT_RECHARGE_LEVEL) { //batt shall be recharged
+    //Serial.println("B F");
+  }else if (result <= BATT_RECHARGE_LEVEL) { //batt shall be recharged
     enable_mains_power(true);
+    //Serial.println("B l");
+  }else{
+    //Serial.println("B ok");
   }
+  batt_voltage[1] = result>>8;
+  batt_voltage[0] = result & 0xFF;
+  if (cnt_send_batt_state > 0) cnt_send_batt_state --;
   return result;
 }
