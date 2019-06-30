@@ -83,7 +83,8 @@ enum STACKSTATE
 {
   STACKSTATE_WAIT_CONFIG = 0,
   STACKSTATE_WAIT_ACK,
-  STACKSTATE_READY
+  STACKSTATE_READY, 
+  STACKSTATE_TX
 };
 
 void enterDeepSleepWithRx();
@@ -125,7 +126,7 @@ class SPAXSTACK
      */
     void setup_rtc(byte time);
     // a flag that a wireless packet has been received
-    void decodePacket(CCPACKET* ccpacket);
+    void decodePacket();
   public:
     /**
      * repeater
@@ -157,6 +158,9 @@ class SPAXSTACK
      * CC1101 radio interface
      */
     CC1101 cc1101;
+    //we can anyway only handle one packet at a time in the constraint environment of an AVR 
+    //so no need to have a buffer here
+    CCPACKET ccReceivedPacket; 
     byte master_address[2];
     /**
      * Stack error code
@@ -170,7 +174,6 @@ class SPAXSTACK
      * Connection state;
      */
     bool crc_err;
-    byte rssi;
     /**
      * Interval between periodic transmissions. 0 for asynchronous transmissions
      */

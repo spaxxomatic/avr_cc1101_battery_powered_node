@@ -28,7 +28,9 @@ void cc1101Interrupt(void){
 // set the flag that a package is available
   sleep_disable();
   disableIRQ_GDO0();
-  commstack.packetAvailable = true;
+  if (commstack.cc1101.rfState != RFSTATE_TX){
+    commstack.packetAvailable = true;
+  }
   FLASH_LED(2);
 }
 
@@ -73,21 +75,9 @@ void SPAXSTACK::dump_regs(void)
     Serial.println(commstack.cc1101.readReg(CC1101_MARCSTATE, CC1101_STATUS_REGISTER) & 0x1f);
     
     Serial.print ("RSSI ");
-    byte rssi=0;
     byte lqi=0;
     byte value=0;
-
-    rssi=commstack.cc1101.readReg(CC1101_RSSI, CC1101_STATUS_REGISTER);
-
-    if (rssi >= 128){
-      value = 255 - rssi;
-      value /= 2;
-      value += 74;
-    }else{
-      value = rssi/2;
-      value += 74;
-    }    
-    Serial.print (value);
+    Serial.print (commstack.cc1101.ReadRSSI());
     
     Serial.print ("LQI ");    
     lqi=commstack.cc1101.readReg(CC1101_LQI, CC1101_STATUS_REGISTER);
@@ -97,8 +87,11 @@ void SPAXSTACK::dump_regs(void)
     Serial.print (" \tpstat ");
     Serial.println(commstack.cc1101.readReg(CC1101_PKTSTATUS, CC1101_STATUS_REGISTER), BIN);    
     
-    Serial.print ("Device address ");
+    Serial.print ("ADDR ");
     Serial.println(commstack.cc1101.devAddress);    
+    
+    Serial.print ("CHANNEL ");
+    Serial.println(commstack.cc1101.channel);      
 
 }
 /**
@@ -504,7 +497,7 @@ long SPAXSTACK::getInternalTemp(void)
   // The offset of 324.31 could be wrong. It is just an indication.
   t = (wADC - 324.31 ) / 1.22;
 
-  // The returned temperature is in degrees Celcius.
+  // The returned temperature is in degrees Celsius.
   return (t);
 }
 
@@ -530,7 +523,6 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
 
 void SPAXSTACK::sendControlPkt(byte function, byte dAddr, byte packetNo, byte errorCode){ 
   CCPACKET packet;
-
   packet.length = 6 ;
   packet.data[0] = dAddr;
   packet.data[1] = commstack.cc1101.devAddress;
@@ -588,8 +580,9 @@ boolean SPAXSTACK::getAddress(void)
 boolean SPAXSTACK::ping(void) {
   SERIAL_DEBUG("Ping");
   if (SWQUERY(0,0,REGI_DEVADDRESS).send())
-  SERIAL_DEBUG("Sent"); //stack state is set to  STACKSTATE_WAIT_ACK
+  SERIAL_DEBUG("Sent"); 
   //TODO: Wait response
+  //TODO: set state to  STACKSTATE_WAIT_ACK
   return true;
   //cor_state cs = {MAX_WAIT_RESPONSE, STACKSTATE_READY};
   //return waitState(&cs);
@@ -599,11 +592,15 @@ boolean SPAXSTACK::ping(void) {
  * spaxstack packet decoder
  *
  */
-void SPAXSTACK::decodePacket(CCPACKET* ccPacket){
+void SPAXSTACK::decodePacket(){
     static SWPACKET swPacket;
     REGISTER *reg;
-    swPacket = SWPACKET(ccPacket);
+    swPacket = SWPACKET(&ccReceivedPacket);
     uint8_t errCode = STACKERR_OK;
+    SERIAL_DEBUGC(" SRC");
+    SERIAL_DEBUGC(swPacket.srcAddr);
+    SERIAL_DEBUGC(" DEST ");
+    SERIAL_DEBUG(swPacket.destAddr);
     if (swPacket.destAddr == SWAP_BCAST_ADDR){
       //TODO: implement broadcast reply
       //sendAck(swPacket.srcAddr, swPacket.packetNo, STACKERR_OK);
@@ -637,7 +634,7 @@ void SPAXSTACK::decodePacket(CCPACKET* ccPacket){
             errCode = STACKERR_REGISTER_NOT_FOUND;
           }else{
             errCode = reg->getData();
-            if (errCode == 0){
+            if (errCode == 0){     
               reg->sendSwapStatus(swPacket.srcAddr, swPacket.packetNo); //reply to the request with this packetno
               return;
             }
@@ -649,38 +646,41 @@ void SPAXSTACK::decodePacket(CCPACKET* ccPacket){
         default:
           errCode =  STACKERR_UNKNOWN_FUNCTION;
     }
-    //if we reached here, send an ACK
+    //if we reached this point, everything is fine, send an ACK
     sendControlPkt(SWAPFUNCT_ACK, swPacket.srcAddr, swPacket.packetNo, errCode);
 }
 
 void SPAXSTACK::printPacketState(){
   if (crc_err) SERIAL_DEBUG("CRC ERR");
-  Serial.println(cc1101.ReadRSSI());
+  SERIAL_DEBUGC("RSSI ");
+  SERIAL_DEBUG(cc1101.ConvertRSSI(ccReceivedPacket.rssi));
 }
 
 void SPAXSTACK::receive_loop(){
   //if (cc1101.rfState == RFSTATE_RX) //needed??
+  bool bDecode = false;
   if(packetAvailable){
     crc_err = false;
-    Serial.print("!");
+    Serial.print("!\n");
     // clear the flag
     packetAvailable = false;
-    CCPACKET packet;
     delay(2); //need a short delay here. Without this there are CRC errors after coming back from sleep mode
-    if(cc1101.receiveData(&packet) > 0){
-      if(!packet.crc_ok) {
+    if(cc1101.receiveData(&ccReceivedPacket) == cc1101.RX_OK){
+      if(!ccReceivedPacket.crc_ok) {
         crc_err = true;
       }else{
-        decodePacket(&packet);
-        dbgprintPacket('R', &packet);
-        rssi = cc1101.ReadRSSI();
+        dbgprintPacket('R', &ccReceivedPacket);
+        //rssi = cc1101.ReadRSSI();
+        bDecode = true;
       }
     }else{
-       Serial.println("?");
+     cc1101.printRxError();
     }
+    printPacketState();
+    if (bDecode) decodePacket();
   }
   if (cc1101.checkRxState() != 0){  //make sure the radio is in a clean RX state
-    SERIAL_DEBUG("?STATE?");
+    SERIAL_DEBUG("?STATE? RESET!");
     RESET();
   }
 }

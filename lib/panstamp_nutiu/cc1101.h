@@ -212,7 +212,8 @@ enum RFSTATE
 //nutiu def pana #define CC1101_DEFVAL_PKTLEN     0x3D        // Packet Length
 //nutiu def pana #define CC1101_DEFVAL_PKTCTRL1   0x06        // Packet Automation Control
 //nutiu def pana #define CC1101_DEFVAL_PKTCTRL0   0x05        // Packet Automation Control
-#define CC1101_DEFVAL_PKTLEN     0xFF        // Packet Length
+//#define CC1101_DEFVAL_PKTLEN     0xFF        // Packet Length
+#define CC1101_DEFVAL_PKTLEN     0x3D        // Packet Length
 #define CC1101_DEFVAL_PKTCTRL1   0x06        // Packet Automation Control
 #define CC1101_DEFVAL_PKTCTRL0   0x05        // Packet Automation Control
 #define CC1101_DEFVAL_ADDR       0xFF        // Device Address
@@ -557,6 +558,16 @@ class CC1101
     void setTxState(void);
     byte ReadLQI();
     float ReadRSSI();
+    float ConvertRSSI(byte rssi);
+    byte rxErrorCode ;
+    enum { 
+      RX_OK=0,
+      ERR_OVRFL,
+      ERR_ZERO_LEN,
+      ERR_INVALID_LEN,
+      ERR_ZERO_BUFFER_LEN
+    };
+    void  printRxError();
     /**
      * setTxPowerAmp
      * 

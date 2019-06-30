@@ -62,6 +62,7 @@ uint8_t REGISTER::setData(byte *data)
  */
 void REGISTER::sendSwapStatus(byte destAddr, byte packetNo) 
 {
+  delay(SWAP_TX_DELAY);
   SWSTATUS packet = SWSTATUS(id, value, length);
   packet.destAddr = destAddr;
   packet.packetNo = packetNo;

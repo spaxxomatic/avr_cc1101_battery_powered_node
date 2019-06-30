@@ -39,7 +39,7 @@
 
 #define SWAP_NB_TX_TRIES       3                                      // Number of transmission retries
 //#define SWAP_TX_DELAY          commstack.cc1101.devAddress * 2         // Delay before sending
-#define SWAP_TX_DELAY          1         // Delay before sending
+#define SWAP_TX_DELAY          50         // Delay before sending
 
 #define ACK_HIGHBYTE 0xF0
 #define ACK_LOWBYTE 0xF0

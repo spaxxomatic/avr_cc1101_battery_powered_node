@@ -11,6 +11,7 @@ COMMAND_STRUCTUR COMMAND_TABELLE[] =
 	{"re",command_reset}, 
 	{"fs",command_factory_settings}, 
 	{"sa",command_radio_addr},
+	{"sc",command_radio_channel},
 	{"dd",command_enable_debug},
 	{"pi",command_ping},
 	{"aa",command_alarm},
@@ -24,6 +25,7 @@ COMMAND_STRUCTUR COMMAND_TABELLE[] =
 PROGMEM const char helptext[] = {
 		"re Restart\r\n"
 		"sa Set radio address\r\n"
+		"sc Set radio channel\r\n"
 		"fs Reset eeprom to factory settings\r\n"
 		"dd Enable debug output\r\n"
 		"pi Ping\r\n"
@@ -65,17 +67,19 @@ int readline() {
     if (readch > 0) {
         switch (readch) {
             case ' ':
+				Serial.print(' ');
 				break; // ignore spaces
 			case '\n': // ignore newline
                 break;
             case '\r': // cr
                 rpos = bufpos;
                 bufpos = 0;  // Reset position index ready for next time
-				Serial.println(' ');
-                return rpos;
+				Serial.print(readch);
+				return rpos;
             default:
 				if (bufpos < 2){ //first two chars are the command
 					cmd[bufpos++] = readch;
+					*param = 0; //set param empty until eventually one comes after the cmd
 				}else{
 					if (bufpos < MAX_PARAM_LENGTH + 2 - 1) {
 						param[bufpos-2] = readch;
@@ -157,7 +161,10 @@ void command_ping (void)
 	if (no_of_pings == 0){
 		no_of_pings = 1;
 	}
-	commstack.ping();
+	while (no_of_pings-- > 0){
+		commstack.ping();
+		delay(500);
+	}
 }
 
 void command_alarm (void)
@@ -179,7 +186,7 @@ void command_factory_settings (void)
 }
 
 //------------------------------------------------------------------------------
-//print/edit own IP
+
 void command_radio_addr (void)
 {
 	if (cmd_vars[0] > 255){
@@ -191,6 +198,18 @@ void command_radio_addr (void)
 	}
 }
 
+//------------------------------------------------------------------------------
+
+void command_radio_channel (void)
+{
+	if (cmd_vars[0] > 255){
+		Serial.println("Invalid channel");
+	}else{
+		Serial.print("Set channel to ");
+		Serial.println(cmd_vars[0]);
+		commstack.cc1101.setChannel(cmd_vars[0], true);
+	}
+}
 //------------------------------------------------------------------------------
 //print helptext
 void command_help (void)

@@ -4,6 +4,7 @@
 extern volatile uint8_t flashLedCnt ;
 extern volatile uint8_t impulseSwitchContdownCnt;
 extern volatile uint16_t trackDoorStateCnt;
+extern volatile uint16_t motorShutdownContdownCnt;
 
 #define TIMER_FREQ 8
 //make sure sleep is disabled as long as the counter runs

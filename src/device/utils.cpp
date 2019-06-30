@@ -9,12 +9,12 @@
 volatile uint8_t flashLedCnt ;
 volatile uint8_t impulseSwitchContdownCnt ;
 volatile uint16_t trackDoorStateCnt;
+volatile uint16_t motorShutdownContdownCnt;
 
 ISR(TIMER1_COMPA_vect) 
 { //8 Hz here
   static uint8_t cnt ;
   cnt+=1;
-  
   if (flashLedCnt > 0){
     digitalWrite(LEDOUTPUT, cnt%2);
     flashLedCnt--;
@@ -26,6 +26,9 @@ ISR(TIMER1_COMPA_vect)
     impulseSwitchContdownCnt--;
   }
   if (impulseSwitchContdownCnt == 0) digitalWrite(PULSE_SWITCH, LOW);
+  
+  if (motorShutdownContdownCnt == 1) digitalWrite(GATE_MOTOR_POWER_ON_PIN,  HIGH); //power off the motor unit;
+  if (motorShutdownContdownCnt > 1) impulseSwitchContdownCnt--;
 
   if (trackDoorStateCnt > 0){
     if (pollRealDoorState()) { 
@@ -43,7 +46,7 @@ ISR(TIMER1_COMPA_vect)
   }
   
   //if all counter are at 0, stop timer and allow sleep mode
-  if (trackDoorStateCnt==0 && flashLedCnt==0 && impulseSwitchContdownCnt==0){
+  if (trackDoorStateCnt==0 && flashLedCnt==0 && impulseSwitchContdownCnt==0 && motorShutdownContdownCnt==0){
     bitClear(TIMSK1, OCIE1A);
     commstack.bEnterSleep = true;
   }  

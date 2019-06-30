@@ -565,24 +565,27 @@ boolean CC1101::sendData(CCPACKET packet)
  * Return:
  * 	Amount of bytes received
  */
-byte CC1101::receiveData(CCPACKET * packet)
+byte CC1101::receiveData(CCPACKET* packet)
 {
   byte val;
   byte rxBytes = readStatusReg(CC1101_RXBYTES);
-
+  rxErrorCode = RX_OK;
   // Any byte waiting to be read and no overflow?
   if (rxBytes & 0x80){//overflow
-     Serial.print("^");
+     rxErrorCode = ERR_OVRFL;
   }
   else if (rxBytes & 0x7F )
   {
     // Read data length
     packet->length = readConfigReg(CC1101_RXFIFO);
     // If packet is too long
-    if (packet->length > CC1101_DATA_LEN)
+    if (packet->length ==  0){
+      rxErrorCode = ERR_ZERO_BUFFER_LEN;
+    }
+    if (packet->length > CC1101_DATA_LEN){
       packet->length = 0;   // Discard packet
-    else
-    {
+      rxErrorCode = ERR_INVALID_LEN;
+    }else{
       // Read data packet
       readBurstReg(packet->data, CC1101_RXFIFO, packet->length);
       // Read RSSI
@@ -592,18 +595,18 @@ byte CC1101::receiveData(CCPACKET * packet)
       packet->lqi = val & 0x7F;
       packet->crc_ok = bitRead(val, 7);
     }
-  }
-  else
+  }else{
     packet->length = 0;
-
+    rxErrorCode = ERR_ZERO_LEN;
+  }
   setIdleState();       // Enter IDLE state
   flushRxFifo();        // Flush Rx FIFO
-  //cmdStrobe(CC1101_SCAL);
+  cmdStrobe(CC1101_SCAL);
 
   // Back to RX state
   setRxState();
 
-  return packet->length;
+  return rxErrorCode;
 }
 
 /**
@@ -656,20 +659,15 @@ byte CC1101::ReadLQI()
     return value;
 }
 
-float CC1101::ReadRSSI()
+float CC1101::ConvertRSSI(byte rssi)
 {
-    byte rssi=0;
-    byte value=0;
-
-    rssi=(readReg(CC1101_RSSI, CC1101_STATUS_REGISTER));
-
 	if (rssi >= 128)
 	{
-		return ((rssi - 256) / 2.0) - 74.0;
+		return (((float) rssi - 256) / 2.0) - 74.0;
 	}
 	else
 	{
-		return (rssi / 2.0) - 74.0;
+		return ((float) rssi / 2.0) - 74.0;
 	}
 
     /*if (rssi >= 128)
@@ -685,4 +683,44 @@ float CC1101::ReadRSSI()
     }
     return value;
     */
+}
+
+
+float CC1101::ReadRSSI()
+{
+  return ConvertRSSI((readReg(CC1101_RSSI, CC1101_STATUS_REGISTER))) ;
+
+    /*if (rssi >= 128)
+    {
+    value = 255 - rssi;
+    value /= 2;
+    value += 74;
+    }
+    else
+    {
+    value = rssi/2;
+    value += 74;
+    }
+    return value;
+    */
+}
+
+void  CC1101::printRxError(){
+  if (rxErrorCode != RX_OK){ 
+    Serial.print("CCRX PKT: ");
+    switch (rxErrorCode){
+      case ERR_OVRFL:
+        Serial.println(" OVRFLW");
+        break;
+      case ERR_ZERO_LEN:
+        Serial.println(" 0 LEN");
+        break;
+      case ERR_INVALID_LEN:
+        Serial.println(" INVALID LEN");            
+        break;
+      case ERR_ZERO_BUFFER_LEN:
+        Serial.println(" BUFF LEN IS 0");
+        break;
+    }
+  }
 }

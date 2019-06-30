@@ -6,7 +6,7 @@
 
 
 #define WDT_CYCLES_CHECK_BAT 10 //about 10 sec
-#define CNT_SEND_BATT_STATUS WDT_CYCLES_CHECK_BAT*20 // 20*10 sec between batt status send
+#define CNT_SEND_BATT_STATUS WDT_CYCLES_CHECK_BAT*6*2 // 2*60 sec interval for sengding the batt state
 
 uint16_t checkBateryState() ;
 void enable_mains_power(bool state);

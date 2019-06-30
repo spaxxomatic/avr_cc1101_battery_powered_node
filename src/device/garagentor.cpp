@@ -86,6 +86,11 @@ commstack.bEnterSleep = false
 #define NOTIFY_EXPECTED_STATE_REACHED bSendState = true; 
 #define NOTIFY_STATE_CHANGE bSendState = true;
 
+//after the sensor indicates the closed door, this timer will trigger the shutdown of the motor unit
+#define TRIGGER_SHUTDOWN_MOTORUNIT motorShutdownContdownCnt = 10*8; \
+bitSet(TIMSK1, OCIE1A); \
+commstack.bEnterSleep = true 
+
 static bool bSendState = false;
 static byte alarm = 0;
 
@@ -232,7 +237,7 @@ const bool pollRealDoorState(){
   };
   if (bStateReached && tor_status[0] == STAT_CLOSED) { //if the expected state is closed and we reached the state, enter closed state 
     keep_charger_on = false;
-    digitalWrite(GATE_MOTOR_POWER_ON_PIN,  HIGH); //power off the motor unit
+    TRIGGER_SHUTDOWN_MOTORUNIT;
     commstack.bSleepActivated = true;
   }
   return bStateReached;

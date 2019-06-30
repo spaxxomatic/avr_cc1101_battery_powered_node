@@ -39,9 +39,7 @@ void wdt_loop(){
   if (commstack.f_wdt >= WDT_CYCLES_CHECK_BAT){ //Check batt state each WDT_CYCLES_CHECK_BAT seconds and return
     commstack.f_wdt = 0;
     checkBateryState();
-    
-  }  
-
+  }
 }
 
 void loop(){

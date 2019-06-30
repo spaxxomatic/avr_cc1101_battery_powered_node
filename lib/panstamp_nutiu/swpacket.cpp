@@ -73,7 +73,7 @@ boolean SWPACKET::send(void)
   CCPACKET packet;
   byte i;
   boolean res;
-
+  delay(SWAP_TX_DELAY);
   packet.length = value.length + SWAP_DATA_HEAD_LEN + 1;
   packet.data[0] = destAddr;
   packet.data[1] = srcAddr;

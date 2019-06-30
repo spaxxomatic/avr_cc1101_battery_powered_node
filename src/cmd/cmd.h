@@ -23,6 +23,7 @@
 	//reset the unit
 	extern void command_reset		(void);
 	extern void command_radio_addr 			(void);
+	extern void command_radio_channel 			(void);
 	extern void command_help  			(void);
 	extern void command_factory_settings (void);
 	extern void command_enable_debug (void);
