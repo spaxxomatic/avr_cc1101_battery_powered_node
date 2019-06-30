@@ -27,8 +27,11 @@ ISR(TIMER1_COMPA_vect)
   }
   if (impulseSwitchContdownCnt == 0) digitalWrite(PULSE_SWITCH, LOW);
   
-  if (motorShutdownContdownCnt == 1) digitalWrite(GATE_MOTOR_POWER_ON_PIN,  HIGH); //power off the motor unit;
-  if (motorShutdownContdownCnt > 1) impulseSwitchContdownCnt--;
+  if (motorShutdownContdownCnt == 1) {
+    digitalWrite(GATE_MOTOR_POWER_ON_PIN,  HIGH); //power off the motor unit;
+    commstack.bSleepActivated = true; //alow module to enter deep sleep
+  }
+  if (motorShutdownContdownCnt > 0) motorShutdownContdownCnt--;
 
   if (trackDoorStateCnt > 0){
     if (pollRealDoorState()) { 
@@ -42,13 +45,14 @@ ISR(TIMER1_COMPA_vect)
     //but this did not happend so send an alarm
       triggerAlarm(ERR_TIMEOUT_WAITING_FOR_STATE);
       trackDoorStateCnt = 0; //stop this countdown
+      commstack.bSleepActivated = true;
     }
   }
   
   //if all counter are at 0, stop timer and allow sleep mode
   if (trackDoorStateCnt==0 && flashLedCnt==0 && impulseSwitchContdownCnt==0 && motorShutdownContdownCnt==0){
     bitClear(TIMSK1, OCIE1A);
-    commstack.bEnterSleep = true;
+    commstack.bEnterSleepAllowed = true;
   }  
 }
 
@@ -57,6 +61,7 @@ void setupActivityTimer(){
   flashLedCnt = 0;
   impulseSwitchContdownCnt = 0;
   trackDoorStateCnt = 0;
+  motorShutdownContdownCnt = 0;
   MCUSR = 0;  // clear out any flags of prior resets.
 // -- init timers
   TCCR1A = 0; // set entire TCCR1A register to 0
@@ -68,7 +73,6 @@ void setupActivityTimer(){
   TCCR1B |= (1 << WGM12); // turn on CTC mode. clear timer on compare match
   TCCR1B |= (1 << CS10); // Set CS10 and CS11 bits for 64 prescaler
   //TCCR1B |= (1 << CS11); 
-  TCCR1B |= (1 << CS10); // Set CS10 and CS12 bits for 1024 prescaler
   TCCR1B |= (1 << CS12);
   //TIMSK1 |= (1 << OCIE1A); // enable timer 1 compare interrupt
   bitSet(TIMSK1, OCIE1A);

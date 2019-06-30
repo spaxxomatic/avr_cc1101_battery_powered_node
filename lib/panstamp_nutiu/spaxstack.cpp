@@ -44,7 +44,7 @@ SPAXSTACK::SPAXSTACK(void)
   repeater = NULL;
   // a flag that a wireless packet has been received
   packetAvailable = false;
-  bEnterSleep = false;
+  bEnterSleepAllowed = false;
   bSleepActivated = false;
   f_wdt = 0;
   seqNo = 0;
@@ -152,7 +152,7 @@ void enterDeepSleepWithRx(){
 
 void SPAXSTACK::enterSleep(){
   enableIRQ_GDO0();
-  if (bSleepActivated && bEnterSleep) enterDeepSleepWithRx();
+  if (bSleepActivated && bEnterSleepAllowed) enterDeepSleepWithRx();
 }
 
 /**

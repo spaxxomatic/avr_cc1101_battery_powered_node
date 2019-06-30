@@ -136,7 +136,7 @@ class SPAXSTACK
     
     byte seqNo ; //sequence number of the received packet
     
-    volatile boolean bEnterSleep;
+    volatile boolean bEnterSleepAllowed;
     boolean bSleepActivated;
     boolean bDebug;
     boolean ping(void) ;

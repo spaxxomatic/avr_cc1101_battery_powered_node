@@ -76,22 +76,25 @@ DECLARE_REGISTERS_END()
 #define AWAIT_STATE(s) trackDoorStateCnt = 2*60*8;  \
 expected_state = s; \
 bitSet(TIMSK1, OCIE1A); \
-commstack.bEnterSleep = false 
+commstack.bEnterSleepAllowed = false 
 
 #define TRACK_STATE() trackDoorStateCnt = 2*60*8;  \
 expected_state = STATE_TRACK_CHANGE; \
 bitSet(TIMSK1, OCIE1A); \
-commstack.bEnterSleep = false 
+commstack.bEnterSleepAllowed = false 
 
-#define NOTIFY_EXPECTED_STATE_REACHED bSendState = true; 
+#define EVENT_EXPECTED_STATE_REACHED bSendState = true; bTriggerShutdownMotorUnit = true; 
 #define NOTIFY_STATE_CHANGE bSendState = true;
 
 //after the sensor indicates the closed door, this timer will trigger the shutdown of the motor unit
 #define TRIGGER_SHUTDOWN_MOTORUNIT motorShutdownContdownCnt = 10*8; \
-bitSet(TIMSK1, OCIE1A); \
-commstack.bEnterSleep = true 
+bitSet(TIMSK1, OCIE1A); 
+
+#define UNTRIGGER_SHUTDOWN_MOTORUNIT motorShutdownContdownCnt = 0
+
 
 static bool bSendState = false;
+static bool bTriggerShutdownMotorUnit = false; 
 static byte alarm = 0;
 
 const void torstate_init(){
@@ -108,7 +111,8 @@ const void torstate_init(){
 }
 
 void enablePowerAndTriggerPulse(){
-  if (digitalRead(GATE_MOTOR_POWER_ON_PIN) == LOW){ //power is on
+  UNTRIGGER_SHUTDOWN_MOTORUNIT;
+  if (digitalRead(GATE_MOTOR_POWER_ON_PIN) == LOW){ //motor unit power is on
     SEND_MOTORUNIT_PULSE;
   }else{
       digitalWrite(GATE_MOTOR_POWER_ON_PIN,  LOW); //it is inverted
@@ -181,10 +185,19 @@ const void sendBattState(){
   }
 }
 
-const void sendDoorStat(){ 
+const void handleDoorStateEvent(){ 
   if (bSendState){
     regDoorState.sendSwapStatus(SWAP_MASTER_ADDRESS,0);
     bSendState = false;
+  }
+  if (bTriggerShutdownMotorUnit){
+    if (digitalRead(GATE_MOTOR_POWER_ON_PIN) == LOW){ //motor unit power is on
+      if (tor_status[0] == STAT_CLOSED) { //if the expected state is closed and we reached the state, enter closed state 
+        keep_charger_on = false;
+        TRIGGER_SHUTDOWN_MOTORUNIT;
+      }
+    }
+    bTriggerShutdownMotorUnit = false;
   }
   if (alarm){
     commstack.sendControlPkt(SWAPFUNCT_ALARM, SWAP_MASTER_ADDRESS, 0, alarm);
@@ -228,17 +241,13 @@ const bool pollRealDoorState(){
   if (isDoorStateChanged()){    
     if (expected_state == tor_status[0]){ //expected pos reached, trigger send state
       //dbgStr = "N EXP STATE REACHED";
-      NOTIFY_EXPECTED_STATE_REACHED;
+      EVENT_EXPECTED_STATE_REACHED;
       bStateReached = true;
     }else{
       //dbgStr = "N STATE CH";
       NOTIFY_STATE_CHANGE;
     }
   };
-  if (bStateReached && tor_status[0] == STAT_CLOSED) { //if the expected state is closed and we reached the state, enter closed state 
-    keep_charger_on = false;
-    TRIGGER_SHUTDOWN_MOTORUNIT;
-    commstack.bSleepActivated = true;
-  }
   return bStateReached;
 }
+

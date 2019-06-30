@@ -42,7 +42,7 @@ const void openDoor(byte rId);
 const void sendImpulse(byte rId);
 const uint8_t getDoorStatus(byte rId);
 const bool pollRealDoorState();
-const void sendDoorStat();
+const void handleDoorStateEvent();
 const void sendBattState();
 const void triggerAlarm(byte reason);
 
