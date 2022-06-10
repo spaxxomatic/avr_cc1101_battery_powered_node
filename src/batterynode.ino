@@ -45,7 +45,7 @@ void wdt_loop(){
 void loop(){
   wdt_loop();
   check_serial_cmd(); //serial command avail?
-  handleDoorStateEvent(); //send status if changed
+  handleDoorStateEvent(); //send status
   sendBattState(); //send batt state from time to time
   commstack.receive_loop();
   // Enable wireless reception interrupt and eventually enter sleep
