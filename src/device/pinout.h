@@ -2,7 +2,7 @@
 #define LEDOUTPUT 4
 
 //the MAINS_POWER_RELAY_PIN is connected to the relay that switches on the power source
-//by that reloading the battery
+//When switched on, the charger starts loading the battery
 
 #define GATE_MOTOR_POWER_ON_PIN 5 
 #define MAINS_POWER_RELAY_PIN 6
