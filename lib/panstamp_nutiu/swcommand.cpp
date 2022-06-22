@@ -44,8 +44,8 @@ SWCOMMAND::SWCOMMAND(byte dAddr, byte rAddr, byte rId, byte *val, byte len)
   function = SWAPFUNCT_CMD;
   regAddr = rAddr;
   regId = rId;
-  value.data = val;
-  value.length = len;
+  swdata_payload.data = val;
+  swdata_payload.length = len;
   request_ack = true;
 }
 

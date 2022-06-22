@@ -1,9 +1,10 @@
 #include "cmd.h"
 #include "Arduino.h"
 #include "spaxstack.h"
+#include "../include/devicedefs.h"
 #include "debug.h"
-#include "../device/battery.h"
-#include "../device/utils.h"
+#include "timermacros.h"
+#include "../include/battery.h"
 volatile unsigned int cmd_vars[MAX_VAR];
 
 COMMAND_STRUCTUR COMMAND_TABELLE[] = 
@@ -16,8 +17,8 @@ COMMAND_STRUCTUR COMMAND_TABELLE[] =
 	{"pi",command_ping},
 	{"aa",command_alarm},
 	{"st",command_stat},
+	{"sd",command_send_device_typedef},
 	{"sl",command_activate_sleep},
-	{"pu",command_trigger_pulse},
 	{"??",command_help},
 	{{00},NULL} 
 };
@@ -31,8 +32,8 @@ PROGMEM const char helptext[] = {
 		"pi Ping\r\n"
 		"aa Alarm\r\n"
 		"st Dump status\r\n"
+		"sd Send device id\r\n"
 		"sl Activate sleep\r\n"
-		"pu Pulse motor unit\r\n"
 		"?? HELP\r\n"				
 		"\r\n"
 };
@@ -167,9 +168,14 @@ void command_ping (void)
 	}
 }
 
+void command_send_device_typedef (void)
+{
+	SEND_DEVICE_TYPEDEF(DEVICE_TYPE);
+}
+
 void command_alarm (void)
 {
-	commstack.sendControlPkt(SWAPFUNCT_ALARM, SWAP_MASTER_ADDRESS, 0, 1);
+	commstack.sendControlPkt(SWAPFUNCT_DEVICETYPE, SWAP_MASTER_ADDRESS, 0, 1);
 }
 
 void command_activate_sleep (void)
@@ -230,8 +236,3 @@ void command_stat ()
 	Serial.println("mV");
 }
 
-void command_trigger_pulse ()
-{
-		Serial.print("Pulse motor unit");
-		SEND_MOTORUNIT_PULSE;		
-}

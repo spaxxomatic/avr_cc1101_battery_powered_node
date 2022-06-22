@@ -367,7 +367,7 @@ class CC1101
     /**
      * Tx Power byte (single PATABLE config)
      */
-    byte paTableByte;
+    byte txPowerRegisterValue;
 
     /**
      * Carrier frequency

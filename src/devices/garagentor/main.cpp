@@ -1,12 +1,15 @@
+
 #include "protocol.h"
 #include "wdt.h"
 #include <avr/sleep.h>
 #include <avr/wdt.h>
 #include "spaxstack.h"
-#include "device/garagentor.h"
+#include "include/devicedefs.h"
 #include "debug.h"
-#include "device/battery.h"
+#include "include/battery.h"
+#include "timermacros.h"
 #include "cmd/cmd.h"
+#include "garagentor.h"
 
 byte b;
 byte i;
@@ -20,7 +23,7 @@ void setup(){
   checkBateryState();
   commstack.init();
   enable_wdt();
-  Serial.print("\nSTART \n CC1101 P "); //cc1101=0
+  Serial.print("\nSTART"); //cc1101=0
   Serial.print(commstack.cc1101.readReg(CC1101_PARTNUM, CC1101_STATUS_REGISTER));
   Serial.print(" V "); //cc1101=0
   Serial.println(commstack.cc1101.readReg(CC1101_VERSION, CC1101_STATUS_REGISTER));

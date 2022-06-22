@@ -4,6 +4,7 @@
 #include "wdt.h"
 #include "protocol.h"
 #include "debug.h"
+#include "timermacros.h"
 
 //#define enableIRQ_GDO0()          attachInterrupt(0, isrGDO0event, FALLING);
 #define enableIRQ_GDO0()          attachInterrupt(0, cc1101Interrupt, FALLING);
@@ -521,7 +522,7 @@ void SPAXSTACK::setTxInterval(byte* interval, bool save)
   }
 }
 
-void SPAXSTACK::sendControlPkt(byte function, byte dAddr, byte packetNo, byte errorCode){ 
+void SPAXSTACK::sendControlPkt(byte function, byte dAddr, byte packetNo, byte controldata){ 
   CCPACKET packet;
   packet.length = 6 ;
   packet.data[0] = dAddr;
@@ -529,7 +530,7 @@ void SPAXSTACK::sendControlPkt(byte function, byte dAddr, byte packetNo, byte er
   packet.data[2] = 0;
   packet.data[3] = packetNo;
   packet.data[4] = function; //the function
-  packet.data[5] = errorCode; //status
+  packet.data[5] = controldata; //status
   commstack.cc1101.sendData(packet);
 };
 
@@ -617,8 +618,8 @@ void SPAXSTACK::decodePacket(){
             errCode = STACKERR_REGISTER_NOT_FOUND;
           }else{
           // Filter incorrect data lengths
-            if (swPacket.value.length == reg->length){
-              errCode = reg->setData(swPacket.value.data);
+            if (swPacket.swdata_payload.length == reg->length){
+              errCode = reg->setData(swPacket.swdata_payload.data);
               if (errCode == 0){
                 reg->sendSwapStatus(swPacket.srcAddr, swPacket.packetNo); //reply to the request with this packetno
                 return ;

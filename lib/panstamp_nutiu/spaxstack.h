@@ -204,8 +204,6 @@ class SPAXSTACK
     
     void dump_regs(void);
     /**
-     * SPAXSTACK
-     *
      * Class constructor
      */
     SPAXSTACK(void);
@@ -315,7 +313,7 @@ class SPAXSTACK
      * 
      */
 
-    void sendControlPkt(byte function, byte dAddr, byte packetNo, byte errorReason);
+    void sendControlPkt(byte function, byte dAddr, byte packetNo, byte controldata);
 
     /**
      * getCapabilities
@@ -324,7 +322,7 @@ class SPAXSTACK
      *  
      * 
      */
-    void getCapabilities(void);
+    void getCapabilities(void); //TBD
     
     boolean waitState(cor_state* cs);
 };
@@ -334,6 +332,7 @@ class SPAXSTACK
  */
 extern SPAXSTACK commstack;
 
+#define SEND_DEVICE_TYPEDEF(devicetype) commstack.sendControlPkt(SWAPFUNCT_DEVICETYPE, SWAP_MASTER_ADDRESS, 0, devicetype)
 /**
  * getRegister
  *

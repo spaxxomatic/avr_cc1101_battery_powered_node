@@ -30,9 +30,9 @@
 	extern void command_ping (void);
 	extern void command_alarm (void);
 	extern void command_stat (void);
-	extern void command_activate_sleep (void);
-	extern void command_trigger_pulse(void);
-	
+	extern void command_sendstat (void);
+	extern void command_activate_sleep (void);	
+	extern void command_send_device_typedef(void);
 	#define RESET() {asm("ldi r30,0"); asm("ldi r31,0"); asm("ijmp");}
 	
 #endif //_CMD_H_

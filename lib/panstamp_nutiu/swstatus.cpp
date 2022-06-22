@@ -43,7 +43,7 @@ SWSTATUS::SWSTATUS(byte registerId, byte *val, byte len)
   function = SWAPFUNCT_STA;
   regAddr = commstack.cc1101.devAddress;
   regId = registerId;
-  value.length = len;
-  value.data = val;
+  swdata_payload.length = len;
+  swdata_payload.data = val;
 }
 

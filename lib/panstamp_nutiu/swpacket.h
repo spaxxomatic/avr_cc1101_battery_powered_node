@@ -52,7 +52,8 @@ enum SWAPFUNCT
   SWAPFUNCT_QRY, // query packet
   SWAPFUNCT_CMD, // command packet
   SWAPFUNCT_ACK, // packet aknowledgment
-  SWAPFUNCT_ALARM // packet aknowledgment
+  SWAPFUNCT_ALARM, //high priority notification
+  SWAPFUNCT_DEVICETYPE //high priority notification
 };
 
 /**
@@ -119,7 +120,7 @@ class SWPACKET : public CCPACKET
     /**
      * Register value
      */
-    SWDATA value;
+    SWDATA swdata_payload;
 
     /**
      * SWPACKET

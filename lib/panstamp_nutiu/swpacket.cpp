@@ -45,9 +45,9 @@ SWPACKET::SWPACKET(CCPACKET* packet)
   function = packet->data[4];
   regAddr = packet->data[5];
   regId = packet->data[6];
-  value.is_string = bitRead(packet->data[2], 0);
-  value.data = packet->data + 7;
-  value.length = packet->length - SWAP_DATA_HEAD_LEN - 1;
+  swdata_payload.is_string = bitRead(packet->data[2], 0);
+  swdata_payload.data = packet->data + 7;
+  swdata_payload.length = packet->length - SWAP_DATA_HEAD_LEN - 1;
 }
 
 /**
@@ -74,7 +74,7 @@ boolean SWPACKET::send(void)
   byte i;
   boolean res;
   delay(SWAP_TX_DELAY);
-  packet.length = value.length + SWAP_DATA_HEAD_LEN + 1;
+  packet.length = swdata_payload.length + SWAP_DATA_HEAD_LEN + 1;
   packet.data[0] = destAddr;
   packet.data[1] = srcAddr;
   packet.data[2] = (hop << 4) & 0xF0;
@@ -85,8 +85,8 @@ boolean SWPACKET::send(void)
   packet.data[5] = regAddr;
   packet.data[6] = regId;
 
-  for(i=0 ; i<value.length ; i++)
-    packet.data[i+7] = value.data[i];
+  for(i=0 ; i<swdata_payload.length ; i++)
+    packet.data[i+7] = swdata_payload.data[i];
 
   i = SWAP_NB_TX_TRIES;
   
@@ -111,7 +111,7 @@ void SWPACKET::crypt(bool decrypt)
   regAddr ^= swap.encryptPwd[8] ^ nonce;
   regId ^= swap.encryptPwd[7] ^ nonce;
 
-  /* payload encryption not implemented yet
+  //TODO: implement payload encryption
   static uint8_t newData[CCPACKET_DATA_LEN];
   byte i, j = 0;  
   for(i=0 ; i<value.length ; i++)
@@ -123,7 +123,7 @@ void SWPACKET::crypt(bool decrypt)
   }
   if (value.length > 0)
     value.data = newData;
-  */
+  //
 /*
   if (!decrypt)
     nonce ^= swap.encryptPwd[9];

@@ -55,8 +55,8 @@
  */
 CC1101::CC1101(void)
 {
-  //paTableByte = PA_LowPower;            // Priority = Low power
-  paTableByte = PA_LongDistance;
+  //txPowerRegisterValue = PA_LowPower;            // Priority = Low power
+  txPowerRegisterValue = PA_LongDistance;
 }
 
 /**
@@ -284,7 +284,7 @@ void CC1101::init(uint8_t freq, uint8_t mode)
 
   // Configure PATABLE
   //writeBurstReg(CC1101_PATABLE, (byte*)paTable, 8);
-  writeReg(CC1101_PATABLE, paTableByte);
+  writeReg(CC1101_PATABLE, txPowerRegisterValue);
 }
 
 /**

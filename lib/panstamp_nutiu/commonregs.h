@@ -26,6 +26,7 @@
 #define _COMMONREGS_H
 #include "swstatus.h"
 #include "spaxstack.h"
+#include "../../src/include/devicedefs.h"
 
 const uint8_t setFreqChannel(uint8_t id, uint8_t *channel);
 const uint8_t setNodeAddress(uint8_t id, uint8_t *addr);
@@ -38,9 +39,6 @@ const uint8_t setTxInterval(uint8_t id, uint8_t *interval);
 #define DEFINE_COMMON_REGINDEX_START()  \
 enum CUSTOM_REGINDEX                    \
 {                                       \
-  REGI_PRODUCTCODE = 0,                 \
-  REGI_HWVERSION,                       \
-  REGI_FWVERSION,                       \
   REGI_FREQCHANNEL,                     \
   REGI_NETWORKID,                       \
   REGI_DEVADDRESS,                      \
@@ -55,16 +53,6 @@ enum CUSTOM_REGINDEX                    \
  * Macro for the definition of registers common to all SWAP devices
  */
 #define DEFINE_COMMON_REGISTERS()                                                                                            \
-/* Product code */                                                                                                           \
-static byte dtProductCode[8] = {SWAP_MANUFACT_ID >> 24, SWAP_MANUFACT_ID >> 16 , SWAP_MANUFACT_ID >> 8, SWAP_MANUFACT_ID,    \
-                       SWAP_PRODUCT_ID >> 24, SWAP_PRODUCT_ID >> 16 , SWAP_PRODUCT_ID >> 8, SWAP_PRODUCT_ID};                \
-REGISTER regProductCode(dtProductCode, sizeof(dtProductCode), NULL, NULL);                                                   \
-/* Hardware version */                                                                                                       \
-static byte dtHwVersion[4] = {HARDWARE_VERSION >> 24, HARDWARE_VERSION >> 16 , HARDWARE_VERSION >> 8, HARDWARE_VERSION};     \
-REGISTER regHwVersion(dtHwVersion, sizeof(dtHwVersion), NULL, NULL);                                                         \
-/* Firmware version */                                                                                                       \
-static byte dtFwVersion[4] = {FIRMWARE_VERSION >> 24, FIRMWARE_VERSION >> 16 , FIRMWARE_VERSION >> 8, FIRMWARE_VERSION};     \
-REGISTER regFwVersion(dtFwVersion, sizeof(dtFwVersion), NULL, NULL);                                                         \
 /* Frequency channel */                                                                                                      \
 REGISTER regFreqChannel(&commstack.cc1101.channel, sizeof(commstack.cc1101.channel), NULL, &setFreqChannel);                 \
 /* Network Id */                                                                                                             \
@@ -79,9 +67,6 @@ REGISTER regTxInterval(commstack.txInterval, sizeof(commstack.txInterval), NULL,
  */
 #define DECLARE_REGISTERS_START()    \
 REGISTER *regTable[] = {             \
-        &regProductCode,             \
-        &regHwVersion,               \
-        &regFwVersion,               \
         &regFreqChannel,             \
         &regNetworkId,               \
         &regDevAddress,              \
